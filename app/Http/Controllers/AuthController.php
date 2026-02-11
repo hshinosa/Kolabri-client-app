@@ -88,7 +88,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|min:2|max:255',
             'email' => 'required|email|max:255',
-            'password' => 'required|min:6|confirmed',
+            'password' => 'required|min:8|confirmed',
             'role' => 'required|in:lecturer,student',
         ]);
 
@@ -118,12 +118,18 @@ class AuthController extends Controller
             }
 
             // Handle validation errors from API
-            if ($response->status() === 422) {
-                return back()->withErrors($response->json('errors', []));
+            if ($response->status() === 422 || $response->status() === 400 || $response->status() === 409) {
+                $errorBody = $response->json('error');
+                if (isset($errorBody['details'])) {
+                    return back()->withErrors($errorBody['details']);
+                }
+                return back()->withErrors([
+                    'email' => $errorBody['message'] ?? 'Registration failed',
+                ]);
             }
 
             return back()->withErrors([
-                'email' => $response->json('message', 'Registration failed'),
+                'email' => 'An unexpected error occurred during registration',
             ]);
         } catch (\Exception $e) {
             Log::error('Registration failed', ['error' => $e->getMessage()]);
