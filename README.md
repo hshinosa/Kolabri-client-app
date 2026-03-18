@@ -77,12 +77,28 @@ VITE_SOCKET_URL=http://localhost:3000
 
 ### 3. Database Setup
 
-```bash
-# Run migrations
-php artisan migrate
+⚠️ **CRITICAL: Database Sharing with Core-API**
 
-# Seed demo data (optional)
-php artisan db:seed
+This project shares the PostgreSQL database with **CoRegula Core API** (Node.js/Prisma). The `users` table and all business logic tables are managed by Core-API, not Laravel.
+
+**Migration Order (MUST FOLLOW):**
+
+```bash
+# Step 1: Run Core-API migrations FIRST (creates users, courses, etc.)
+cd ../CoRegula-core-api
+npx prisma migrate deploy
+
+# Step 2: Then run Laravel migrations (creates sessions, cache, jobs only)
+cd ../CoRegula-client-app
+php artisan migrate
+```
+
+**⚠️ DO NOT use `php artisan migrate:fresh`** - it will drop ALL tables including Core-API tables!
+
+If you need to reset Laravel tables only:
+```bash
+php artisan migrate:rollback  # Rolls back Laravel migrations only
+php artisan migrate            # Re-runs Laravel migrations
 ```
 
 ### 4. Start Development Server
@@ -322,6 +338,39 @@ Or use docker-compose (recommended):
 docker-compose up -d client-app-php client-app-web
 ```
 
+## 🗄️ Database Architecture
+
+### Shared Database Setup
+
+This application uses a **shared PostgreSQL database** with CoRegula Core-API:
+
+| Component | Managed By | Tables |
+|-----------|-----------|--------|
+| **Core-API (Prisma)** | Node.js/Express | `users`, `courses`, `groups`, `chat_spaces`, `chat_messages`, `learning_goals`, `reflections`, `knowledge_bases`, `ai_chats` |
+| **Client-App (Laravel)** | PHP/Laravel | `sessions`, `cache`, `jobs`, `password_reset_tokens` |
+
+### Table Ownership
+
+**Core-API Tables (Read-Only from Laravel):**
+- `users` - User accounts with UUID, role enum, google_id
+- `courses` - Course management
+- `groups` - Study groups
+- All business logic tables
+
+**Laravel Tables:**
+- `sessions` - Session storage
+- `cache` - Application cache
+- `jobs` - Queue jobs
+- `password_reset_tokens` - Password reset functionality
+
+### Migration Strategy
+
+1. **Core-API migrations run first** - Creates all business tables
+2. **Laravel migrations run second** - Creates infrastructure tables only
+3. **Laravel skips `users` table** - Already exists from Core-API
+
+See [Database Setup](#3-database-setup) for commands.
+
 ## 📝 Database Schema
 
 ### Core Tables
@@ -375,6 +424,40 @@ php artisan test --coverage
 
 ## 🐛 Troubleshooting
 
+### Database Issues
+
+#### Error: "table public.users does not exist"
+**Cause:** Laravel migrations ran before Core-API migrations, or `migrate:fresh` dropped Core-API tables.
+
+**Fix:**
+```bash
+# 1. Reset database and apply Core-API migrations first
+cd ../CoRegula-core-api
+npx prisma db execute --file prisma/reset_for_prisma.sql
+npx prisma migrate deploy
+
+# 2. Then run Laravel migrations
+cd ../CoRegula-client-app
+php artisan migrate
+```
+
+#### Error: "relation 'users' already exists" (Duplicate table)
+**Cause:** Both Laravel and Core-API trying to create users table.
+
+**Fix:** 
+- Laravel migration has been modified to skip users table creation
+- Just run: `php artisan migrate` (not `migrate:fresh`)
+
+#### Database Connection Error
+```bash
+# Check PostgreSQL is running
+# Verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD in .env
+
+# Test connection
+php artisan tinker
+>>> DB::connection()->getPdo();
+```
+
 ### Port Already in Use
 ```bash
 # Laravel on different port
@@ -382,13 +465,6 @@ php artisan serve --port=8001
 
 # Vite on different port
 npm run dev -- --port 5174
-```
-
-### Database Connection Error
-```bash
-# Check PostgreSQL is running
-# Verify DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD in .env
-php artisan migrate --fresh --seed
 ```
 
 ### CORS Issues
