@@ -151,14 +151,16 @@ export default function AppLayout({ children, title, navItems = [] }: AppLayoutP
 
     return (
         <div 
-            className="flex h-screen"
+            className="relative flex h-screen overflow-hidden"
             style={{
                 background: 'linear-gradient(135deg, #f5f0f0 0%, #e8e4f0 50%, #f0e8e8 100%)',
             }}
         >
             {/* Decorative blobs */}
-            <OrganicBlob className="top-0 left-0" delay={0} color="rgba(136, 22, 28, 0.03)" size={400} />
-            <OrganicBlob className="bottom-0 right-0" delay={-5} color="rgba(136, 22, 28, 0.02)" size={300} />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                <OrganicBlob className="top-0 left-0" delay={0} color="rgba(136, 22, 28, 0.03)" size={400} />
+                <OrganicBlob className="bottom-0 right-0" delay={-5} color="rgba(136, 22, 28, 0.02)" size={300} />
+            </div>
 
             {/* Sidebar - Desktop */}
             <aside 
