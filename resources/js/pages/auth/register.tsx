@@ -19,7 +19,7 @@ export default function Register() {
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        post(auth.register.post.url());
+        post('/register');
     };
 
     const inputStyles = {
@@ -211,7 +211,7 @@ export default function Register() {
                         style={{ color: lightMode ? '#64748b' : '#94a3b8' }}
                     >
                         Sudah punya akun?{' '}
-                        <Link href={auth.login.post.url()} className="font-medium text-[#88161c] hover:underline">
+                        <Link href="/login" className="font-medium text-[#88161c] hover:underline">
                             Masuk
                         </Link>
                     </p>

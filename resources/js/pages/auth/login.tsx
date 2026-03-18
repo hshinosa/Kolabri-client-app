@@ -17,7 +17,7 @@ export default function Login() {
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        post(auth.login.post.url());
+        post('/login');
     };
 
     return (
@@ -136,7 +136,7 @@ export default function Login() {
                         style={{ color: lightMode ? '#64748b' : '#94a3b8' }}
                     >
                         Belum punya akun?{' '}
-                        <Link href={auth.register.post.url()} className="font-medium text-[#88161c] hover:underline">
+                        <Link href="/register" className="font-medium text-[#88161c] hover:underline">
                             Daftar Sekarang
                         </Link>
                     </p>
