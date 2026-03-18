@@ -1,72 +1,172 @@
-import { motion } from 'framer-motion';
-import { PropsWithChildren } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PropsWithChildren, useEffect, useState, createContext, useContext } from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { OrganicBlob } from '../components/Welcome/utils/helpers';
+
+import { ToastNotification } from '@/components/ui/ToastNotification';
+export const ThemeContext = createContext({ lightMode: true });
+export const useTheme = () => useContext(ThemeContext);
 
 export default function GuestLayout({ children }: PropsWithChildren) {
-    return (
-        <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-primary-50 via-white to-primary-50 px-4 py-12 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-            {/* Academic Pattern Background */}
-            <div className="pointer-events-none absolute inset-0 opacity-[0.02] dark:opacity-[0.05]" style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234338ca' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }} />
+    const [darkMode, setDarkMode] = useState(false);
 
-            {/* Logo */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="relative z-10 mb-10"
+    useEffect(() => {
+        // Initialization
+        const isDark = localStorage.getItem('kolabri_theme') === 'dark';
+        setDarkMode(isDark);
+    }, []);
+
+    useEffect(() => {
+        // Side effect: body background color
+        if (darkMode) {
+            document.body.style.backgroundColor = '#0a0a0f';
+            localStorage.setItem('kolabri_theme', 'dark');
+        } else {
+            document.body.style.backgroundColor = '#EDE8F4';
+            localStorage.setItem('kolabri_theme', 'light');
+        }
+        return () => {
+            document.body.style.backgroundColor = '';
+        };
+    }, [darkMode]);
+
+    const lightMode = !darkMode;
+
+    return (
+        <ThemeContext.Provider value={{ lightMode }}>
+            <div
+                className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12 transition-colors duration-500"
+                style={{
+                    background: lightMode
+                        ? 'linear-gradient(135deg, #EDE8F4 0%, #E8EDF8 35%, #EDF0F7 70%, #F0EBF5 100%)'
+                        : '#0a0a0f',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
             >
-                <div className="flex flex-col items-center">
-                    {/* University-style Crest/Logo */}
-                    <div className="relative mb-4">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-primary-200 bg-gradient-to-br from-primary-700 to-primary-900 shadow-lg dark:border-primary-700">
-                            <svg
-                                className="h-10 w-10 text-white"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                {/* Theme Toggle Button */}
+                <div className="absolute right-6 top-6 z-50">
+                    <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className="relative flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-300"
+                        style={{
+                            background: lightMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(30, 41, 59, 0.5)',
+                            border: `1px solid ${lightMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                            boxShadow: lightMode
+                                ? '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                                : '0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1)',
+                            color: lightMode ? '#475569' : '#e2e8f0',
+                        }}
+                        aria-label="Toggle Dark Mode"
+                    >
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={darkMode ? 'dark' : 'light'}
+                                initial={{ y: -20, opacity: 0, rotate: -90 }}
+                                animate={{ y: 0, opacity: 1, rotate: 0 }}
+                                exit={{ y: 20, opacity: 0, rotate: 90 }}
+                                transition={{ duration: 0.2 }}
                             >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={1.5}
-                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                                />
-                            </svg>
-                        </div>
-                        {/* Decorative Elements */}
-                        <div className="absolute -left-2 -top-2 h-4 w-4 rounded-full bg-accent-400" />
-                        <div className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-accent-500" />
+                                {darkMode ? <Moon size={20} /> : <Sun size={20} />}
+                            </motion.div>
+                        </AnimatePresence>
+                    </button>
+                </div>
+
+                {/* Background Decor */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                    {lightMode ? (
+                        <>
+                            <OrganicBlob delay={0} color="rgba(136,22,28,0.06)" size={600} className="-left-48 -top-48" />
+                            <OrganicBlob delay={2} color="rgba(136,22,28,0.04)" size={500} className="-bottom-32 -right-32" />
+                        </>
+                    ) : (
+                        <>
+                            <OrganicBlob delay={0} color="rgba(164,18,25,0.08)" size={600} className="-left-48 -top-48" />
+                            <OrganicBlob delay={2} color="rgba(164,18,25,0.06)" size={500} className="-bottom-32 -right-32" />
+                        </>
+                    )}
+                </div>
+
+                {/* Global Toast Notifications */}
+                <ToastNotification lightMode={lightMode} />
+
+                <div className="relative z-10 w-full lg:flex lg:h-screen lg:max-w-none lg:items-center lg:justify-between lg:gap-12 lg:px-12">
+                    {/* Left Side: Branding / Illustration (Hidden on Mobile) */}
+                    <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:items-center lg:justify-center">
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="relative z-10 flex flex-col items-center text-center"
+                        >
+                            <div
+                                className="relative mb-6 flex h-32 w-32 items-center justify-center rounded-3xl shadow-xl transition-colors duration-500"
+                                style={{ background: lightMode ? 'white' : 'rgba(30, 41, 59, 0.8)' }}
+                            >
+                                <img src="/LogoKolabri.webp" alt="Kolabri Logo" className="h-20 w-20 object-contain" />
+                            </div>
+                            <h1
+                                className="text-4xl font-bold tracking-tight transition-colors duration-500 md:text-5xl"
+                                style={{ color: lightMode ? '#4A4A4A' : '#f8fafc' }}
+                            >
+                                Kolabri
+                            </h1>
+                            <div className="mt-4 flex items-center justify-center gap-4">
+                                <span className="h-px w-12 bg-[#88161c] opacity-20" />
+                                <p className="text-base font-medium tracking-widest text-[#88161c] uppercase">
+                                    Platform Kolaborasi
+                                </p>
+                                <span className="h-px w-12 bg-[#88161c] opacity-20" />
+                            </div>
+                            <p
+                                className="mt-6 max-w-md text-sm leading-relaxed transition-colors duration-500"
+                                style={{ color: lightMode ? '#6B7280' : '#94a3b8' }}
+                            >
+                                AI-Powered Collaborative Learning Environment. Tingkatkan kualitas diskusi, analisis proses pembelajaran secara real-time, dan capai pemahaman yang lebih mendalam.
+                            </p>
+                        </motion.div>
                     </div>
-                    <h1 className="font-heading text-3xl font-bold tracking-tight text-primary-900 dark:text-zinc-100">
-                        CoRegula
-                    </h1>
-                    <div className="mt-2 flex items-center gap-2">
-                        <span className="h-px w-8 bg-accent-400" />
-                        <p className="text-sm font-medium uppercase tracking-widest text-primary-600 dark:text-primary-400">
-                            Collaborative Learning Platform
-                        </p>
-                        <span className="h-px w-8 bg-accent-400" />
+
+                    {/* Right Side: Auth Form */}
+                    <div className="flex w-full flex-col items-center justify-center lg:w-[480px] lg:flex-shrink-0">
+                        {/* Mobile Logo (Visible only on mobile) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="relative z-10 mb-10 lg:hidden"
+                        >
+                            <div className="flex flex-col items-center">
+                                <div
+                                    className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-3xl shadow-xl transition-colors duration-500"
+                                    style={{ background: lightMode ? 'white' : 'rgba(30, 41, 59, 0.8)' }}
+                                >
+                                    <img src="/LogoKolabri.webp" alt="Kolabri Logo" className="h-12 w-12 object-contain" />
+                                </div>
+                                <h1
+                                    className="text-3xl font-bold tracking-tight transition-colors duration-500"
+                                    style={{ color: lightMode ? '#4A4A4A' : '#f8fafc' }}
+                                >
+                                    Kolabri
+                                </h1>
+                            </div>
+                        </motion.div>
+
+                        <div className="relative z-10 w-full max-w-md">{children}</div>
+
+                        {/* Academic Footer */}
+                        <motion.footer
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className="relative z-10 mt-8 text-center text-xs transition-colors duration-500"
+                            style={{ color: lightMode ? '#6B7280' : '#94a3b8' }}
+                        >
+                            <p className="font-medium text-[#88161c]">Dikembangkan di Telkom University</p>
+                        </motion.footer>
                     </div>
                 </div>
-            </motion.div>
-
-            <div className="relative z-10 w-full max-w-md">
-                {children}
             </div>
-
-            {/* Academic Footer */}
-            <motion.footer
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="relative z-10 mt-8 text-center text-xs text-zinc-500 dark:text-zinc-500"
-            >
-                <p>AI-Powered Co-Regulated Learning Environment</p>
-                <p className="mt-1 font-medium text-primary-600 dark:text-primary-400">
-                    Est. 2024 • Educational Excellence
-                </p>
-            </motion.footer>
-        </div>
+        </ThemeContext.Provider>
     );
 }

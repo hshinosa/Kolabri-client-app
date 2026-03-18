@@ -1,12 +1,14 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEvent } from 'react';
-
 import { InputError } from '@/components/ui/input-error';
-import { InputLabel } from '@/components/ui/input-label';
-import GuestLayout from '@/layouts/guest-layout';
+import GuestLayout, { useTheme } from '@/layouts/guest-layout';
 import auth from '@/routes/auth';
+import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 
 export default function Register() {
+    const { lightMode } = useTheme();
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -17,35 +19,52 @@ export default function Register() {
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        post(auth.register.url());
+        post(auth.register.post.url());
+    };
+
+    const inputStyles = {
+        backgroundColor: lightMode ? '#ffffff' : 'rgba(30, 41, 59, 0.6)',
+        borderColor: lightMode ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
+        color: lightMode ? '#1e293b' : '#f8fafc',
     };
 
     return (
-        <GuestLayout>
+        <>
             <Head title="Buat Akun" />
 
-            <div className="w-full max-w-md">
-                <div className="card-elevated p-8">
+            <div className="w-full">
+                <LiquidGlassCard intensity="medium" lightMode={lightMode} className="w-full p-8 transition-colors duration-500 max-w-xl mx-auto">
                     <div className="mb-8 text-center">
-                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                        <h1
+                            className="text-2xl font-bold transition-colors duration-500"
+                            style={{ color: lightMode ? '#4A4A4A' : '#f8fafc' }}
+                        >
                             Buat Akun
                         </h1>
-                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            Bergabunglah dengan CoRegula untuk memulai pembelajaran kolaboratif
+                        <p
+                            className="mt-2 text-sm transition-colors duration-500"
+                            style={{ color: lightMode ? '#6B7280' : '#94a3b8' }}
+                        >
+                            Bergabunglah dengan Kolabri untuk memulai pembelajaran kolaboratif
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <InputLabel htmlFor="name" required>
+                            <label 
+                                htmlFor="name" 
+                                className="block text-sm font-medium transition-colors duration-500"
+                                style={{ color: lightMode ? '#4A4A4A' : '#e2e8f0' }}
+                            >
                                 Nama Lengkap
-                            </InputLabel>
+                            </label>
                             <input
                                 id="name"
                                 type="text"
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
-                                className="input-field mt-1"
+                                className="mt-2 w-full rounded-xl border px-4 py-3 shadow-sm transition-colors focus:border-[#88161c] focus:ring focus:ring-[#88161c] focus:ring-opacity-50"
+                                style={inputStyles}
                                 placeholder="Nama Anda"
                                 autoComplete="name"
                                 autoFocus
@@ -54,15 +73,20 @@ export default function Register() {
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="email" required>
+                            <label 
+                                htmlFor="email" 
+                                className="block text-sm font-medium transition-colors duration-500"
+                                style={{ color: lightMode ? '#4A4A4A' : '#e2e8f0' }}
+                            >
                                 Alamat Email
-                            </InputLabel>
+                            </label>
                             <input
                                 id="email"
                                 type="email"
                                 value={data.email}
                                 onChange={(e) => setData('email', e.target.value)}
-                                className="input-field mt-1"
+                                className="mt-2 w-full rounded-xl border px-4 py-3 shadow-sm transition-colors focus:border-[#88161c] focus:ring focus:ring-[#88161c] focus:ring-opacity-50"
+                                style={inputStyles}
                                 placeholder="anda@contoh.com"
                                 autoComplete="email"
                             />
@@ -70,9 +94,13 @@ export default function Register() {
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="role" required>
+                            <label 
+                                htmlFor="role" 
+                                className="block text-sm font-medium transition-colors duration-500"
+                                style={{ color: lightMode ? '#4A4A4A' : '#e2e8f0' }}
+                            >
                                 Saya adalah...
-                            </InputLabel>
+                            </label>
                             <div className="mt-2 flex gap-3">
                                 <label className="flex flex-1 cursor-pointer items-center justify-center">
                                     <input
@@ -84,10 +112,12 @@ export default function Register() {
                                         className="sr-only"
                                     />
                                     <span
-                                        className={`w-full rounded-lg border-2 px-4 py-3 text-center text-sm font-medium transition-all ${
+                                        className={`w-full rounded-xl border-2 px-4 py-3 text-center text-sm font-medium transition-all duration-300 ${
                                             data.role === 'student'
-                                                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                                : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
+                                                ? 'border-[#88161c] bg-[rgba(136,22,28,0.05)] text-[#88161c]'
+                                                : lightMode
+                                                    ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                                    : 'border-[rgba(255,255,255,0.1)] bg-[rgba(30,41,59,0.5)] text-slate-300 hover:border-[rgba(255,255,255,0.2)]'
                                         }`}
                                     >
                                         Mahasiswa
@@ -103,10 +133,12 @@ export default function Register() {
                                         className="sr-only"
                                     />
                                     <span
-                                        className={`w-full rounded-lg border-2 px-4 py-3 text-center text-sm font-medium transition-all ${
+                                        className={`w-full rounded-xl border-2 px-4 py-3 text-center text-sm font-medium transition-all duration-300 ${
                                             data.role === 'lecturer'
-                                                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'
-                                                : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
+                                                ? 'border-[#88161c] bg-[rgba(136,22,28,0.05)] text-[#88161c]'
+                                                : lightMode
+                                                    ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                                    : 'border-[rgba(255,255,255,0.1)] bg-[rgba(30,41,59,0.5)] text-slate-300 hover:border-[rgba(255,255,255,0.2)]'
                                         }`}
                                     >
                                         Dosen
@@ -117,67 +149,77 @@ export default function Register() {
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="password" required>
+                            <label 
+                                htmlFor="password" 
+                                className="block text-sm font-medium transition-colors duration-500"
+                                style={{ color: lightMode ? '#4A4A4A' : '#e2e8f0' }}
+                            >
                                 Kata Sandi
-                            </InputLabel>
-                            <input
+                            </label>
+                            <PasswordInput
                                 id="password"
-                                type="password"
+                                name="password"
                                 value={data.password}
                                 onChange={(e) => setData('password', e.target.value)}
-                                className="input-field mt-1"
+                                lightMode={lightMode}
                                 placeholder="••••••••"
                                 autoComplete="new-password"
                             />
+                            <PasswordStrengthMeter password={data.password} lightMode={lightMode} />
                             <InputError message={errors.password} />
                         </div>
 
                         <div>
-                            <InputLabel htmlFor="password_confirmation" required>
+                            <label 
+                                htmlFor="password_confirmation" 
+                                className="block text-sm font-medium transition-colors duration-500"
+                                style={{ color: lightMode ? '#4A4A4A' : '#e2e8f0' }}
+                            >
                                 Konfirmasi Kata Sandi
-                            </InputLabel>
-                            <input
+                            </label>
+                            <PasswordInput
                                 id="password_confirmation"
-                                type="password"
+                                name="password_confirmation"
                                 value={data.password_confirmation}
                                 onChange={(e) => setData('password_confirmation', e.target.value)}
-                                className="input-field mt-1"
+                                lightMode={lightMode}
                                 placeholder="••••••••"
                                 autoComplete="new-password"
                             />
                             <InputError message={errors.password_confirmation} />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {processing ? (
-                                <span className="flex items-center justify-center gap-2">
-                                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                    Membuat Akun...
-                                </span>
-                            ) : (
-                                'Buat Akun'
-                            )}
-                        </button>
+                        <div className="pt-2">
+                            <PrimaryButton className="w-full justify-center" disabled={processing}>
+                                {processing ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Membuat Akun...
+                                    </span>
+                                ) : (
+                                    'Buat Akun'
+                                )}
+                            </PrimaryButton>
+                        </div>
                     </form>
 
-                    <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                    <p
+                        className="mt-6 text-center text-sm transition-colors"
+                        style={{ color: lightMode ? '#64748b' : '#94a3b8' }}
+                    >
                         Sudah punya akun?{' '}
-                        <Link
-                            href={auth.login.url()}
-                            className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
-                        >
+                        <Link href={auth.login.post.url()} className="font-medium text-[#88161c] hover:underline">
                             Masuk
                         </Link>
                     </p>
-                </div>
+                </LiquidGlassCard>
             </div>
-        </GuestLayout>
+        </>
     );
 }
+
+// Wrap in layout to inject Context
+Register.layout = (page: any) => <GuestLayout>{page}</GuestLayout>;
