@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, SharedData, LearningGoal } from '@/types';
 import student from '@/routes/student';
-import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
+import { LiquidGlassCard } from '@/components/Welcome/utils/helpers';
 
 interface GroupMember {
     id: string;
@@ -157,11 +157,9 @@ const headingStyle = {
     fontFamily: "'Plus Jakarta Sans', sans-serif",
 } as const;
 
-const bodyTextClass = 'text-sm text-[#6B7280]';
-
 export default function StudentChatIndex({ course, group, goal, hasGoal, socketUrl }: Props) {
     const { auth } = usePage<SharedData>().props;
-    const navItems = useStudentNav('chat');
+    const navItems = useStudentNav('chat-room', { courseId: course.id });
     const [messages, setMessages] = useState<DisplayMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isConnected, setIsConnected] = useState(false);
@@ -173,7 +171,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
     const [showGoalBanner, setShowGoalBanner] = useState(!hasGoal);
     
     // Chat space state - default to first chat space
-    const [activeChatSpaceId, setActiveChatSpaceId] = useState<string | null>(
+    const [activeChatSpaceId] = useState<string | null>(
         group.chatSpaces?.[0]?.id || null
     );
     

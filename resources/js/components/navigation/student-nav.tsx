@@ -1,4 +1,3 @@
-import { usePage } from '@inertiajs/react';
 import student from '@/routes/student';
 
 export interface NavSubItem {
@@ -42,8 +41,6 @@ const Icons = {
 type ActivePage = 'courses' | 'reflections' | 'ai-chat' | 'course-detail' | 'groups' | 'chat-spaces' | 'chat-room' | 'goals';
 
 export function useStudentNav(activePage: ActivePage, context?: StudentNavContext): NavItem[] {
-    const { url } = usePage();
-    
     const navItems: NavItem[] = [
         {
             name: 'Mata Kuliah Saya',

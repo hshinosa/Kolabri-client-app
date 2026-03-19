@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, SharedData } from '@/types';
 import student from '@/routes/student';
-import { LiquidGlassCard, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
+import { LiquidGlassCard } from '@/components/Welcome/utils/helpers';
 
 interface GroupMember {
     id: string;
@@ -179,8 +179,6 @@ const headingStyle = {
     fontFamily: "'Plus Jakarta Sans', sans-serif",
 } as const;
 
-const bodyTextClass = 'text-sm text-[#6B7280]';
-
 export default function StudentChatRoom({ course, group, chatSpace, socketUrl }: Props) {
     const { auth } = usePage<SharedData>().props;
     const navItems = useStudentNav('chat-room', { courseId: course.id });
@@ -188,7 +186,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     const goal = chatSpace.myGoal;
     const initialSessionClosed = isClosedChatSpace(chatSpace);
     const [sessionClosed, setSessionClosed] = useState(initialSessionClosed);
-    const [sessionClosedAt, setSessionClosedAt] = useState<string | null>(chatSpace.closedAt || null);
+    const [, setSessionClosedAt] = useState<string | null>(chatSpace.closedAt || null);
     const [sessionClosedMessage, setSessionClosedMessage] = useState<string | null>(
         initialSessionClosed ? 'Sesi diskusi ini telah ditutup.' : null
     );
@@ -262,12 +260,15 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     }, []);
 
     // AI mention option
-    const aiMentionOption = {
-        id: 'ai',
-        name: 'AI Assistant',
-        email: 'Tanyakan kepada AI',
-        isAI: true,
-    };
+    const aiMentionOption = useMemo(
+        () => ({
+            id: 'ai',
+            name: 'AI Assistant',
+            email: 'Tanyakan kepada AI',
+            isAI: true,
+        }),
+        []
+    );
 
     // Filter members for mention suggestions (including AI)
     const filteredMembers = useMemo(() => {
@@ -292,7 +293,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         }
         
         return members;
-    }, [group.members, mentionFilter, auth.user?.id]);
+    }, [aiMentionOption, group.members, mentionFilter, auth.user?.id]);
 
     // Process messages to determine grouping (show avatar on FIRST message of consecutive group - at top)
     const processedMessages = useMemo((): ProcessedMessage[] => {
