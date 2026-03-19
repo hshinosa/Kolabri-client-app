@@ -1,12 +1,14 @@
 import { Head, usePage, Link } from '@inertiajs/react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import React, { useState, useEffect, useRef, FormEvent, useMemo, ChangeEvent, useCallback } from 'react';
+import { useState, useEffect, useRef, FormEvent, useMemo, ChangeEvent, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { MessageSquare, Send, Paperclip, X, CornerUpLeft, Users, Lock, AlertTriangle, CheckCircle, BarChart3 } from 'lucide-react';
 
 import AppLayout from '@/layouts/app-layout';
 import { useStudentNav } from '@/components/navigation/student-nav';
-import { Course, SharedData, LearningGoal } from '@/types';
+import { Course, SharedData } from '@/types';
 import student from '@/routes/student';
+import { LiquidGlassCard, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
 
 interface GroupMember {
     id: string;
@@ -147,23 +149,23 @@ const Avatar = ({
     className?: string;
 }) => {
     const bgColor = type === 'ai' || type === 'bot' 
-        ? 'bg-accent-100 dark:bg-accent-900/30' 
+        ? 'bg-[rgba(136,22,28,0.08)] border border-[rgba(136,22,28,0.12)]' 
         : type === 'system'
-        ? 'bg-primary-100 dark:bg-primary-900/30'
-        : 'bg-zinc-200 dark:bg-zinc-700';
+        ? 'bg-[rgba(136,22,28,0.12)] border border-[rgba(136,22,28,0.2)]'
+        : 'bg-[rgba(107,114,128,0.08)] border border-[rgba(255,255,255,0.5)]';
     
     return (
         <div className={`flex items-center justify-center rounded-full ${bgColor} ${className}`}>
             {type === 'ai' || type === 'bot' ? (
-                <svg className="h-4 w-4 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-[#88161c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
             ) : type === 'system' ? (
-                <svg className="h-4 w-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-[#88161c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             ) : (
-                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                <span className="text-sm font-bold text-[#4A4A4A]">
                     {name?.charAt(0)?.toUpperCase() || '?'}
                 </span>
             )}
@@ -171,8 +173,17 @@ const Avatar = ({
     );
 };
 
+// Style constants matching the design system
+const headingStyle = {
+    color: '#4A4A4A',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+} as const;
+
+const bodyTextClass = 'text-sm text-[#6B7280]';
+
 export default function StudentChatRoom({ course, group, chatSpace, socketUrl }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const navItems = useStudentNav('chat-room', { courseId: course.id });
     const hasGoal = !!chatSpace.myGoal;
     const goal = chatSpace.myGoal;
     const initialSessionClosed = isClosedChatSpace(chatSpace);
@@ -221,15 +232,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     
     // Right sidebar state (mobile)
     const [showRightSidebar, setShowRightSidebar] = useState(false);
-    
-    // Quality feedback state (real-time from AI-Engine)
-    const [qualityScore, setQualityScore] = useState<number | null>(null);
-    const [engagementFeedback, setEngagementFeedback] = useState<{
-        hotPercentage?: number;
-        lexicalVariety?: number;
-        engagementType?: string;
-    } | null>(null);
-    const [showQualityBadge, setShowQualityBadge] = useState(false);
     
     // Discussion quality state (from AI orchestration)
     interface DiscussionQuality {
@@ -292,8 +294,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         return members;
     }, [group.members, mentionFilter, auth.user?.id]);
 
-    const navItems = useStudentNav('chat-room', { courseId: course.id });
-
     // Process messages to determine grouping (show avatar on FIRST message of consecutive group - at top)
     const processedMessages = useMemo((): ProcessedMessage[] => {
         return messages.map((message, index) => {
@@ -312,7 +312,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
             return {
                 ...message,
-                showAvatar: isFirstInGroup, // Avatar on FIRST (top) message of group
+                showAvatar: isFirstInGroup,
                 showName: isFirstInGroup,
                 showTime: isLastInGroup,
                 isGrouped: !isFirstInGroup,
@@ -361,7 +361,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         });
 
         socketRef.current.on('chat_history', (data: { messages: SocketChatMessage[] }) => {
-            // Load chat history
             const historyMessages: DisplayMessage[] = data.messages.map((msg) => ({
                 id: msg.id,
                 sender_id: msg.senderId,
@@ -467,7 +466,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
             triggerReason: string;
         }) => {
             // Intervention will come as a regular message, this is just for notification
-            console.log('AI Intervention triggered:', data.triggerReason);
+            void data.triggerReason;
         });
 
         return () => {
@@ -494,7 +493,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (container) {
-            // Use scrollTop instead of scrollIntoView to prevent page scroll
             container.scrollTop = container.scrollHeight;
         }
     }, [messages]);
@@ -577,7 +575,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         });
 
         setPendingFiles((prev) => [...prev, ...newFiles]);
-        e.target.value = ''; // Reset input
+        e.target.value = '';
     };
 
     // Remove pending file
@@ -604,7 +602,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
         if (atIndex !== -1) {
             const textAfterAt = textBeforeCursor.slice(atIndex + 1);
-            // Check if there's no space after @ (still typing mention)
             if (!textAfterAt.includes(' ')) {
                 setShowMentionList(true);
                 setMentionFilter(textAfterAt);
@@ -741,34 +738,6 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
     // Render message content with highlighted mentions and basic markdown
     const renderMessageContent = (content: string, mentions?: string[]) => {
-        // First, parse basic markdown (bold text with **)
-        const parseMarkdown = (text: string): React.ReactNode[] => {
-            const parts: React.ReactNode[] = [];
-            const regex = /\*\*([^*]+)\*\*/g;
-            let lastIndex = 0;
-            let match;
-            let keyIndex = 0;
-
-            while ((match = regex.exec(text)) !== null) {
-                // Add text before the bold
-                if (match.index > lastIndex) {
-                    parts.push(text.slice(lastIndex, match.index));
-                }
-                // Add bold text
-                parts.push(<strong key={`bold-${keyIndex++}`} className="font-semibold">{match[1]}</strong>);
-                lastIndex = match.index + match[0].length;
-            }
-            // Add remaining text
-            if (lastIndex < text.length) {
-                parts.push(text.slice(lastIndex));
-            }
-            return parts.length > 0 ? parts : [text];
-        };
-
-        if (!mentions || mentions.length === 0) {
-            return <>{parseMarkdown(content)}</>;
-        }
-
         // Simple highlight for @mentions
         const parts = content.split(/(@\w+(?:\s\w+)*)/g);
         return (
@@ -778,17 +747,17 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                         const mentionName = part.slice(1);
                         const isMentioned = group.members?.some(
                             (m) => m.name.toLowerCase() === mentionName.toLowerCase() &&
-                                   mentions.includes(m.id)
+                                   mentions?.includes(m.id)
                         );
                         if (isMentioned) {
                             return (
-                                <span key={i} className="rounded bg-primary-200/50 px-1 font-medium text-primary-700 dark:bg-primary-800/50 dark:text-primary-300">
+                                <span key={i} className="rounded bg-[rgba(136,22,28,0.12)] px-1 font-semibold text-[#88161c]">
                                     {part}
                                 </span>
                             );
                         }
                     }
-                    return <span key={i}>{parseMarkdown(part)}</span>;
+                    return <span key={i}>{part}</span>;
                 })}
             </>
         );
@@ -821,9 +790,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
             setIsUploading(true);
             try {
                 // Convert files to base64 data URLs for transmission
-                // In production, you would upload to a server/S3 instead
                 attachments = await Promise.all(pendingFiles.map(async (pf) => {
-                    // Convert file to base64 data URL
                     const base64 = await new Promise<string>((resolve) => {
                         const reader = new FileReader();
                         reader.onloadend = () => resolve(reader.result as string);
@@ -835,7 +802,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                         name: pf.file.name,
                         type: pf.file.type,
                         size: pf.file.size,
-                        url: base64, // Use base64 for transmission
+                        url: base64,
                         previewUrl: pf.file.type.startsWith('image/') ? base64 : undefined,
                     };
                 }));
@@ -983,76 +950,91 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                 {/* Main Chat Area */}
                 <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                     {/* Chat Header */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mb-2 flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:mb-4 sm:p-4"
-                    >
-                        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center text-primary-600 dark:text-primary-400 sm:h-10 sm:w-10">
-                                <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                                </svg>
-                            </div>
-                            <div className="min-w-0">
-                                <h2 className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-100 sm:text-lg">
-                                    {group.name}
-                                </h2>
-                                <p className="truncate text-xs text-zinc-500 sm:text-sm">
-                                    {course.name} • Diskusi
-                                </p>
-                                {sessionClosed && (
-                                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300">
-                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                        Sesi Ditutup
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex flex-shrink-0 items-center gap-2">
-                            {/* Online Users Avatars - compact */}
-                            {isConnected && onlineUsers.length > 0 && (
-                                <div className="flex -space-x-2">
-                                    {onlineUsers.slice(0, 2).map((user, index) => (
-                                        <div
-                                            key={user.odId}
-                                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary-100 text-xs font-medium text-primary-700 dark:border-zinc-900 dark:bg-primary-900/50 dark:text-primary-300 sm:h-8 sm:w-8"
-                                            style={{ zIndex: 3 - index }}
-                                            title={user.userName}
+                    <LiquidGlassCard intensity="light" className="mb-4 p-4" lightMode={true}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <div 
+                                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                                    style={{ 
+                                        background: 'rgba(136,22,28,0.08)', 
+                                        border: '1px solid rgba(136,22,28,0.12)' 
+                                    }}
+                                >
+                                    <MessageSquare className="h-5 w-5 text-[#88161c]" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="truncate text-lg font-semibold" style={headingStyle}>
+                                        {group.name}
+                                    </h2>
+                                    <p className="truncate text-sm text-[#6B7280]">
+                                        {course.name} • Diskusi
+                                    </p>
+                                    {sessionClosed && (
+                                        <span 
+                                            className="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
+                                            style={{ 
+                                                background: 'rgba(107,114,128,0.15)', 
+                                                color: '#6B7280',
+                                                border: '1px solid rgba(107,114,128,0.2)',
+                                            }}
                                         >
-                                            {user.userName.charAt(0).toUpperCase()}
-                                        </div>
-                                    ))}
-                                    {onlineUsers.length > 2 && (
-                                        <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-zinc-200 text-xs font-medium text-zinc-600 dark:border-zinc-900 dark:bg-zinc-700 dark:text-zinc-300 sm:h-8 sm:w-8">
-                                            +{onlineUsers.length - 2}
-                                        </div>
+                                            <Lock className="h-3 w-3" />
+                                            Sesi Ditutup
+                                        </span>
                                     )}
                                 </div>
-                            )}
-                            {/* Mobile: Toggle right sidebar */}
-                            {!sessionClosed && (
+                            </div>
+                            <div className="flex flex-shrink-0 items-center gap-2">
+                                {/* Online Users Avatars - compact */}
+                                {isConnected && onlineUsers.length > 0 && (
+                                    <div className="flex -space-x-2">
+                                        {onlineUsers.slice(0, 2).map((user, index) => (
+                                            <div
+                                                key={user.odId}
+                                                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-[#88161c]"
+                                                style={{ 
+                                                    zIndex: 3 - index,
+                                                    background: 'rgba(136,22,28,0.1)',
+                                                }}
+                                                title={user.userName}
+                                            >
+                                                {user.userName.charAt(0).toUpperCase()}
+                                            </div>
+                                        ))}
+                                        {onlineUsers.length > 2 && (
+                                            <div 
+                                                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-xs font-medium text-[#6B7280]"
+                                                style={{ background: 'rgba(107,114,128,0.15)' }}
+                                            >
+                                                +{onlineUsers.length - 2}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {/* Close Session Button */}
+                                {!sessionClosed && (
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenCloseConfirmModal}
+                                        disabled={isClosingSession}
+                                        className="hidden items-center gap-1.5 rounded-xl border border-white/50 px-3 py-2 text-xs font-medium text-[#4A4A4A] transition-colors hover:bg-white/50 disabled:opacity-50 sm:flex"
+                                        style={{ background: 'rgba(255,255,255,0.4)' }}
+                                    >
+                                        <Lock className="h-3.5 w-3.5" />
+                                        {isClosingSession ? 'Menutup...' : 'Tutup Sesi'}
+                                    </button>
+                                )}
+                                {/* Mobile: Toggle right sidebar */}
                                 <button
-                                    type="button"
-                                    onClick={handleOpenCloseConfirmModal}
-                                    disabled={isClosingSession}
-                                    className="btn-secondary flex items-center gap-1 rounded-full border border-zinc-200 px-3 py-1 text-[11px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-800 disabled:opacity-60"
+                                    onClick={() => setShowRightSidebar(!showRightSidebar)}
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6B7280] transition-colors hover:bg-white/50 lg:hidden"
+                                    style={{ background: 'rgba(255,255,255,0.4)' }}
                                 >
-                                    {isClosingSession ? 'Menutup...' : 'Tutup Sesi'}
+                                    <Users className="h-5 w-5" />
                                 </button>
-                            )}
-                            <button
-                                onClick={() => setShowRightSidebar(!showRightSidebar)}
-                                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 lg:hidden"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                </svg>
-                            </button>
+                            </div>
                         </div>
-                    </motion.div>
+                    </LiquidGlassCard>
 
                     <AnimatePresence>
                         {closeSessionError && (
@@ -1060,9 +1042,11 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -4 }}
-                                className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                className="mb-4"
                             >
-                                {closeSessionError}
+                                <LiquidGlassCard intensity="light" className="border-l-4 border-red-500 p-3" lightMode={true}>
+                                    <p className="text-sm text-red-700">{closeSessionError}</p>
+                                </LiquidGlassCard>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -1074,19 +1058,27 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className="mb-2 overflow-hidden sm:mb-4"
+                                className="mb-4 overflow-hidden"
                             >
-                                <div className="rounded-lg border border-caution-200 bg-caution-50 p-3 dark:border-caution-800 dark:bg-caution-900/20">
+                                <LiquidGlassCard intensity="light" className="p-4" lightMode={true}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-start gap-3">
-                                            <svg className="h-5 w-5 flex-shrink-0 text-caution-600 dark:text-caution-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                            </svg>
+                                            <div 
+                                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                                                style={{ 
+                                                    background: 'rgba(245,158,11,0.1)', 
+                                                    border: '1px solid rgba(245,158,11,0.2)' 
+                                                }}
+                                            >
+                                                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                </svg>
+                                            </div>
                                             <div>
-                                                <p className="text-sm font-medium text-caution-800 dark:text-caution-200">
+                                                <p className="font-semibold text-[#4A4A4A]" style={headingStyle}>
                                                     Tetapkan tujuan pembelajaran Anda
                                                 </p>
-                                                <p className="mt-0.5 text-xs text-caution-700 dark:text-caution-300">
+                                                <p className="mt-0.5 text-sm text-[#6B7280]">
                                                     Bantu fokus diskusi dengan menetapkan tujuan SMART untuk sesi ini.
                                                 </p>
                                             </div>
@@ -1094,21 +1086,24 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                         <div className="flex items-center gap-2">
                                             <Link
                                                 href={student.goals.create.url({ course: course.id, chatSpace: chatSpace.id })}
-                                                className="rounded-lg bg-caution-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-caution-700"
+                                                className="rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                                                style={{ 
+                                                    background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                                    boxShadow: '0 8px 32px rgba(136,22,28,0.4)',
+                                                }}
                                             >
                                                 Tetapkan
                                             </Link>
                                             <button
                                                 onClick={() => setShowGoalBanner(false)}
-                                                className="rounded-lg p-1 text-caution-600 hover:bg-caution-200 dark:text-caution-400 dark:hover:bg-caution-800/30"
+                                                className="flex h-9 w-9 items-center justify-center rounded-xl text-[#6B7280] transition-colors hover:bg-white/50"
+                                                style={{ background: 'rgba(255,255,255,0.4)' }}
                                             >
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
+                                                <X className="h-4 w-4" />
                                             </button>
                                         </div>
                                     </div>
-                                </div>
+                                </LiquidGlassCard>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -1118,40 +1113,38 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-2 sm:mb-4"
+                            className="mb-4"
                         >
-                            <div className={`rounded-lg border p-3 ${
-                                hasSubmittedReflection
-                                    ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                                    : 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20'
-                            }`}>
+                            <LiquidGlassCard 
+                                intensity="light" 
+                                className={`p-4 ${hasSubmittedReflection ? 'border-l-4 border-green-500' : 'border-l-4 border-purple-500'}`} 
+                                lightMode={true}
+                            >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-start gap-3">
                                         {hasSubmittedReflection ? (
-                                            <svg className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
+                                            <div 
+                                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                                                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
+                                            >
+                                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                            </div>
                                         ) : (
-                                            <svg className="h-5 w-5 flex-shrink-0 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                            </svg>
+                                            <div 
+                                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                                                style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)' }}
+                                            >
+                                                <Lock className="h-5 w-5 text-purple-600" />
+                                            </div>
                                         )}
                                         <div>
-                                            <p className={`text-sm font-medium ${
-                                                hasSubmittedReflection
-                                                    ? 'text-green-800 dark:text-green-200'
-                                                    : 'text-purple-800 dark:text-purple-200'
-                                            }`}>
+                                            <p className={`font-semibold ${hasSubmittedReflection ? 'text-green-800' : 'text-purple-800'}`} style={headingStyle}>
                                                 {hasSubmittedReflection
                                                     ? 'Sesi ini telah ditutup - Refleksi terkirim'
                                                     : sessionClosedMessage || 'Sesi diskusi ini telah ditutup'
                                                 }
                                             </p>
-                                            <p className={`mt-0.5 text-xs ${
-                                                hasSubmittedReflection
-                                                    ? 'text-green-700 dark:text-green-300'
-                                                    : 'text-purple-700 dark:text-purple-300'
-                                            }`}>
+                                            <p className={`mt-0.5 text-sm ${hasSubmittedReflection ? 'text-green-700' : 'text-purple-700'}`}>
                                                 {hasSubmittedReflection
                                                     ? 'Terima kasih telah mengirimkan refleksi Anda untuk sesi ini.'
                                                     : 'Silakan isi refleksi untuk sesi ini sebelum melanjutkan.'
@@ -1162,13 +1155,17 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                     {!hasSubmittedReflection && (
                                         <button
                                             onClick={() => setShowReflectionModal(true)}
-                                            className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+                                            className="rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                                            style={{ 
+                                                background: 'linear-gradient(135deg, rgba(168,85,247,0.92) 0%, rgba(147,51,234,0.96) 100%)',
+                                                boxShadow: '0 8px 32px rgba(168,85,247,0.4)',
+                                            }}
                                         >
                                             Isi Refleksi
                                         </button>
                                     )}
                                 </div>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     )}
 
@@ -1177,448 +1174,477 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-900/20 sm:mb-4 sm:p-3"
+                            className="mb-4"
                         >
-                            <div className="flex items-center gap-2">
-                                <svg className="h-4 w-4 flex-shrink-0 text-red-500 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span className="truncate text-xs text-red-700 dark:text-red-300 sm:text-sm">{connectionError}</span>
-                            </div>
+                            <LiquidGlassCard intensity="light" className="border-l-4 border-red-500 p-3" lightMode={true}>
+                                <div className="flex items-center gap-2">
+                                    <svg className="h-5 w-5 flex-shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="truncate text-sm text-red-700">{connectionError}</span>
+                                </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     )}
 
                     {/* Messages Container */}
-                    <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <LiquidGlassCard intensity="medium" className="min-h-0 flex-1 overflow-hidden p-4" lightMode={true}>
                         <div className="flex h-full flex-col">
                             <div 
                                 ref={messagesContainerRef}
-                                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 scrollbar-stable sm:p-4 ${isScrolling ? 'is-scrolling' : ''}`}
+                                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 ${isScrolling ? 'is-scrolling' : ''}`}
                             >
-                            <LayoutGroup>
-                            <div className="space-y-1">
-                                <AnimatePresence initial={false}>
-                                    {processedMessages.map((message, index) => {
-                                        const ownMessage = isOwnMessage(message);
-                                        
-                                        return (
-                                            <motion.div
-                                                key={message.id || index}
-                                                layout
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ layout: { duration: 0.2 } }}
-                                                className={`flex items-start gap-2 ${ownMessage ? 'flex-row-reverse' : 'flex-row'} ${message.isGrouped ? 'mt-0.5' : 'mt-3'}`}
-                                            >
-                                                {/* Avatar - show only on FIRST message of group (top), placeholder space otherwise */}
-                                                {!ownMessage && (
-                                                    <div className="w-6 flex-shrink-0 pt-0.5 sm:w-8">
-                                                        {message.showAvatar && (
-                                                            <Avatar 
-                                                                name={message.sender_name} 
-                                                                type={getAvatarType(message)}
-                                                                className="h-6 w-6 sm:h-8 sm:w-8"
-                                                            />
+                                <LayoutGroup>
+                                    <div className="space-y-1">
+                                        <AnimatePresence initial={false}>
+                                            {processedMessages.map((message, index) => {
+                                                const ownMessage = isOwnMessage(message);
+                                                
+                                                return (
+                                                    <motion.div
+                                                        key={message.id || index}
+                                                        layout
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0 }}
+                                                        transition={{ layout: { duration: 0.2 } }}
+                                                        className={`flex items-start gap-2 ${ownMessage ? 'flex-row-reverse' : 'flex-row'} ${message.isGrouped ? 'mt-0.5' : 'mt-3'}`}
+                                                    >
+                                                        {/* Avatar - show only on FIRST message of group (top), placeholder space otherwise */}
+                                                        {!ownMessage && (
+                                                            <div className="w-6 flex-shrink-0 pt-0.5 sm:w-8">
+                                                                {message.showAvatar && (
+                                                                    <Avatar 
+                                                                        name={message.sender_name} 
+                                                                        type={getAvatarType(message)}
+                                                                        className="h-6 w-6 sm:h-8 sm:w-8"
+                                                                    />
+                                                                )}
+                                                            </div>
                                                         )}
-                                                    </div>
-                                                )}
 
-                                                {/* Message Content */}
-                                                <div className={`group flex max-w-[85%] flex-col sm:max-w-[70%] ${ownMessage ? 'items-end' : 'items-start'}`}>
-                                                    {/* Sender name - only on first message of group */}
-                                                    {!ownMessage && message.showName && (
-                                                        <span className="mb-1 ml-1 text-xs font-medium text-zinc-500">
-                                                            {getSenderDisplayName(message)}
-                                                        </span>
-                                                    )}
+                                                        {/* Message Content */}
+                                                        <div className={`group flex max-w-[85%] flex-col sm:max-w-[70%] ${ownMessage ? 'items-end' : 'items-start'}`}>
+                                                            {/* Sender name - only on first message of group */}
+                                                            {!ownMessage && message.showName && (
+                                                                <span className="mb-1 ml-1 text-xs font-medium text-[#6B7280]">
+                                                                    {getSenderDisplayName(message)}
+                                                                </span>
+                                                            )}
 
-                                                    {/* Reply context - show what message this is replying to */}
-                                                    {message.reply_to && (
-                                                        <div className={`mb-1 flex items-center gap-1 rounded-lg px-2 py-1 text-xs sm:px-3 sm:py-1.5 ${
-                                                            ownMessage 
-                                                                ? 'bg-primary-700/50 text-primary-100' 
-                                                                : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300'
-                                                        }`}>
-                                                            <svg className="hidden h-3 w-3 flex-shrink-0 sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                                            </svg>
-                                                            <span className="font-medium">{message.reply_to.senderName}:</span>
-                                                            <span className="max-w-[100px] truncate sm:max-w-[150px]">{message.reply_to.content}</span>
-                                                        </div>
-                                                    )}
+                                                            {/* Reply context - show what message this is replying to */}
+                                                            {message.reply_to && (
+                                                                <div 
+                                                                    className={`mb-1 flex items-center gap-1 rounded-xl px-2 py-1 text-xs sm:px-3 sm:py-1.5 ${
+                                                                        ownMessage 
+                                                                            ? 'text-white' 
+                                                                            : 'text-[#6B7280]'
+                                                                    }`}
+                                                                    style={{
+                                                                        background: ownMessage 
+                                                                            ? 'rgba(136,22,28,0.3)' 
+                                                                            : 'rgba(107,114,128,0.15)',
+                                                                    }}
+                                                                >
+                                                                    <CornerUpLeft className="hidden h-3 w-3 flex-shrink-0 sm:block" />
+                                                                    <span className="font-medium">{message.reply_to.senderName}:</span>
+                                                                    <span className="max-w-[100px] truncate sm:max-w-[150px]">{message.reply_to.content}</span>
+                                                                </div>
+                                                            )}
 
-                                                    {/* File Attachments */}
-                                                    {message.attachments && message.attachments.length > 0 && (
-                                                        <div className="mb-1 flex flex-wrap gap-1.5 sm:gap-2">
-                                                            {message.attachments.map((attachment) => (
-                                                                <div key={attachment.id}>
-                                                                    {isImageFile(attachment.type) ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => openImagePreview(attachment.url, attachment.name)}
-                                                                            className="block overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                                                        >
-                                                                            <img 
-                                                                                src={attachment.url} 
-                                                                                alt={attachment.name}
-                                                                                className="max-h-32 max-w-[180px] rounded-lg object-cover transition-transform hover:scale-105 sm:max-h-48 sm:max-w-[250px]"
-                                                                                onError={(e) => {
-                                                                                    // Fallback if image fails to load
-                                                                                    (e.target as HTMLImageElement).style.display = 'none';
-                                                                                }}
-                                                                            />
-                                                                        </button>
-                                                                    ) : (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => downloadImage(attachment.url, attachment.name)}
-                                                                            className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors sm:gap-2 sm:px-3 sm:py-2 ${
-                                                                                ownMessage
-                                                                                    ? 'bg-primary-700/50 text-primary-100 hover:bg-primary-700/70'
-                                                                                    : 'bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600'
-                                                                            }`}
-                                                                        >
-                                                                            <svg className="h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                            </svg>
-                                                                            <div className="min-w-0 text-left">
-                                                                                <p className="max-w-[100px] truncate text-xs font-medium sm:max-w-none sm:text-sm">{attachment.name}</p>
-                                                                                <p className="text-xs opacity-70">{formatFileSize(attachment.size)}</p>
-                                                                            </div>
-                                                                            <svg className="h-3.5 w-3.5 flex-shrink-0 opacity-60 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                                            </svg>
-                                                                        </button>
+                                                            {/* File Attachments */}
+                                                            {message.attachments && message.attachments.length > 0 && (
+                                                                <div className="mb-1 flex flex-wrap gap-1.5 sm:gap-2">
+                                                                    {message.attachments.map((attachment) => (
+                                                                        <div key={attachment.id}>
+                                                                            {isImageFile(attachment.type) ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => openImagePreview(attachment.url, attachment.name)}
+                                                                                    className="block overflow-hidden rounded-xl focus:outline-none focus:ring-2 focus:ring-[#88161c]"
+                                                                                >
+                                                                                    <img 
+                                                                                        src={attachment.url} 
+                                                                                        alt={attachment.name}
+                                                                                        className="max-h-32 max-w-[180px] rounded-xl object-cover transition-transform hover:scale-105 sm:max-h-48 sm:max-w-[250px]"
+                                                                                        onError={(e) => {
+                                                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                                                        }}
+                                                                                    />
+                                                                                </button>
+                                                                            ) : (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => downloadImage(attachment.url, attachment.name)}
+                                                                                    className={`flex items-center gap-1.5 rounded-xl px-2 py-1.5 transition-colors sm:gap-2 sm:px-3 sm:py-2 ${
+                                                                                        ownMessage
+                                                                                            ? 'text-white'
+                                                                                            : 'text-[#4A4A4A]'
+                                                                                    }`}
+                                                                                    style={{
+                                                                                        background: ownMessage
+                                                                                            ? 'rgba(136,22,28,0.3)'
+                                                                                            : 'rgba(107,114,128,0.15)',
+                                                                                    }}
+                                                                                >
+                                                                                    <svg className="h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                                    </svg>
+                                                                                    <div className="min-w-0 text-left">
+                                                                                        <p className="max-w-[100px] truncate text-xs font-medium sm:max-w-none sm:text-sm">{attachment.name}</p>
+                                                                                        <p className="text-xs opacity-70">{formatFileSize(attachment.size)}</p>
+                                                                                    </div>
+                                                                                    <svg className="h-3.5 w-3.5 flex-shrink-0 opacity-60 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                                                    </svg>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {/* Message bubble with action buttons */}
+                                                            {message.content && (
+                                                                <div className="flex items-center gap-1">
+                                                                    {/* Action buttons - show on left for own messages */}
+                                                                    {ownMessage && (
+                                                                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                                                            <button
+                                                                                onClick={() => handleDelete(message.id)}
+                                                                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#6B7280] transition-colors hover:bg-red-100 hover:text-red-600"
+                                                                                title="Hapus pesan"
+                                                                            >
+                                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleReply(message)}
+                                                                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#6B7280] transition-colors hover:bg-white/50 hover:text-[#88161c]"
+                                                                                title="Balas"
+                                                                            >
+                                                                                <CornerUpLeft className="h-4 w-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div 
+                                                                        className={`rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 ${
+                                                                            ownMessage
+                                                                                ? 'text-white'
+                                                                                : isAIMessage(message) || isBotMessage(message)
+                                                                                ? 'text-[#4A4A4A]'
+                                                                                : isSystemMessage(message)
+                                                                                ? 'text-[#4A4A4A]'
+                                                                                : 'text-[#4A4A4A]'
+                                                                        }`}
+                                                                        style={{
+                                                                            background: ownMessage
+                                                                                ? 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)'
+                                                                                : isAIMessage(message) || isBotMessage(message)
+                                                                                ? 'rgba(136,22,28,0.08)'
+                                                                                : isSystemMessage(message)
+                                                                                ? 'linear-gradient(135deg, rgba(136,22,28,0.12) 0%, rgba(136,22,28,0.06) 100%)'
+                                                                                : 'rgba(255,255,255,0.7)',
+                                                                            border: ownMessage
+                                                                                ? '1px solid rgba(255,255,255,0.18)'
+                                                                                : isAIMessage(message) || isBotMessage(message)
+                                                                                ? '1px solid rgba(136,22,28,0.15)'
+                                                                                : isSystemMessage(message)
+                                                                                ? '1px solid rgba(136,22,28,0.2)'
+                                                                                : '1px solid rgba(255,255,255,0.5)',
+                                                                        }}
+                                                                    >
+                                                                        <p className="whitespace-pre-wrap text-sm">
+                                                                            {renderMessageContent(message.content, message.mentions)}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {/* Action buttons - show on right for others' messages */}
+                                                                    {!ownMessage && (
+                                                                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                                                            <button
+                                                                                onClick={() => handleReply(message)}
+                                                                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#6B7280] transition-colors hover:bg-white/50 hover:text-[#88161c]"
+                                                                                title="Balas"
+                                                                            >
+                                                                                <CornerUpLeft className="h-4 w-4" />
+                                                                            </button>
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* Message bubble with action buttons */}
-                                                    {message.content && (
-                                                    <div className="flex items-center gap-1">
-                                                        {/* Action buttons - show on left for own messages */}
-                                                        {ownMessage && (
-                                                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                                                <button
-                                                                    onClick={() => handleDelete(message.id)}
-                                                                    className="rounded p-1 text-zinc-400 hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/30"
-                                                                    title="Hapus pesan"
-                                                                >
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleReply(message)}
-                                                                    className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700"
-                                                                    title="Balas"
-                                                                >
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                            )}
 
-                                                        <div className={`rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 ${
-                                                            ownMessage
-                                                                ? 'bg-primary-600 text-white'
-                                                                : isAIMessage(message) || isBotMessage(message)
-                                                                ? 'border border-accent-200 bg-accent-50 text-accent-900 dark:border-accent-800 dark:bg-accent-900/20 dark:text-accent-100'
-                                                                : isSystemMessage(message)
-                                                                ? 'border border-primary-200 bg-gradient-to-br from-primary-50 to-primary-100/50 text-primary-900 dark:border-primary-800 dark:from-primary-900/30 dark:to-primary-900/10 dark:text-primary-100'
-                                                                : 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
-                                                        }`}>
-                                                            <p className={`whitespace-pre-wrap text-sm ${isSystemMessage(message) ? 'leading-relaxed' : ''}`}>
-                                                                {renderMessageContent(message.content, message.mentions)}
-                                                            </p>
+                                                            {/* Time - only on last message of group */}
+                                                            {message.showTime && (
+                                                                <span className="mt-1 text-xs text-[#9CA3AF]">
+                                                                    {formatTime(message.created_at)}
+                                                                </span>
+                                                            )}
                                                         </div>
 
-                                                        {/* Action buttons - show on right for others' messages */}
-                                                        {!ownMessage && (
-                                                            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                                                <button
-                                                                    onClick={() => handleReply(message)}
-                                                                    className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-700"
-                                                                    title="Balas"
-                                                                >
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    )}
+                                                        {/* Own message avatar placeholder for alignment */}
+                                                        {ownMessage && <div className="w-6 flex-shrink-0 sm:w-8" />}
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </AnimatePresence>
 
-                                                    {/* Time - only on last message of group */}
-                                                    {message.showTime && (
-                                                        <span className="mt-1 text-xs text-zinc-400">
-                                                            {formatTime(message.created_at)}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                        {/* Typing Indicator - with smooth layout animation */}
+                                        <AnimatePresence mode="popLayout">
+                                            {typingUsers.length > 0 && (
+                                                <motion.div
+                                                    layout
+                                                    initial={{ opacity: 0, y: 10, height: 0 }}
+                                                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                                    exit={{ opacity: 0, y: -10, height: 0 }}
+                                                    transition={{ 
+                                                        duration: 0.3,
+                                                        ease: 'easeInOut',
+                                                        layout: { duration: 0.2 }
+                                                    }}
+                                                    className="mt-3 flex items-center gap-2 overflow-hidden"
+                                                >
+                                                    <motion.div 
+                                                        className="flex items-center gap-1 rounded-full px-3 py-2"
+                                                        style={{ background: 'rgba(107,114,128,0.1)' }}
+                                                        initial={{ scale: 0.8 }}
+                                                        animate={{ scale: 1 }}
+                                                        exit={{ scale: 0.8 }}
+                                                    >
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '0ms' }} />
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '150ms' }} />
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '300ms' }} />
+                                                    </motion.div>
+                                                    <motion.span 
+                                                        className="text-xs text-[#6B7280]"
+                                                        initial={{ opacity: 0, x: -10 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        exit={{ opacity: 0, x: -10 }}
+                                                    >
+                                                        {typingUsers.join(', ')} sedang mengetik...
+                                                    </motion.span>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </LayoutGroup>
+                            </div>
 
-                                                {/* Own message avatar placeholder for alignment */}
-                                                {ownMessage && <div className="w-6 flex-shrink-0 sm:w-8" />}
-                                            </motion.div>
-                                        );
-                                    })}
-                                </AnimatePresence>
-
-                                {/* Typing Indicator - with smooth layout animation */}
-                                <AnimatePresence mode="popLayout">
-                                    {typingUsers.length > 0 && (
+                            {/* Message Input */}
+                            <div className="mt-4 border-t border-white/50 pt-4">
+                                {/* Reply Preview */}
+                                <AnimatePresence>
+                                    {replyingTo && (
                                         <motion.div
-                                            layout
-                                            initial={{ opacity: 0, y: 10, height: 0 }}
-                                            animate={{ opacity: 1, y: 0, height: 'auto' }}
-                                            exit={{ opacity: 0, y: -10, height: 0 }}
-                                            transition={{ 
-                                                duration: 0.3,
-                                                ease: 'easeInOut',
-                                                layout: { duration: 0.2 }
-                                            }}
-                                            className="mt-3 flex items-center gap-2 overflow-hidden"
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mb-2 flex items-center justify-between rounded-xl border-l-4 border-[#88161c] px-3 py-2"
+                                            style={{ background: 'rgba(136,22,28,0.06)' }}
                                         >
-                                            <motion.div 
-                                                className="flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-2 dark:bg-zinc-800"
-                                                initial={{ scale: 0.8 }}
-                                                animate={{ scale: 1 }}
-                                                exit={{ scale: 0.8 }}
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <CornerUpLeft className="hidden h-4 w-4 flex-shrink-0 text-[#88161c] sm:block" />
+                                                <div className="min-w-0">
+                                                    <span className="text-xs font-medium text-[#88161c]">
+                                                        Membalas {replyingTo.senderName}
+                                                    </span>
+                                                    <p className="truncate text-xs text-[#6B7280]">{replyingTo.content}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={cancelReply}
+                                                className="ml-2 flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-[#6B7280] transition-colors hover:bg-white/50"
                                             >
-                                                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '0ms' }} />
-                                                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '150ms' }} />
-                                                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '300ms' }} />
-                                            </motion.div>
-                                            <motion.span 
-                                                className="text-xs text-zinc-500"
-                                                initial={{ opacity: 0, x: -10 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -10 }}
-                                            >
-                                                {typingUsers.join(', ')} sedang mengetik...
-                                            </motion.span>
+                                                <X className="h-4 w-4" />
+                                            </button>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                            </div>
-                            </LayoutGroup>
-                        </div>
 
-                        {/* Message Input */}
-                        <div className="border-t border-zinc-200 p-2 dark:border-zinc-700 sm:p-4">
-                            {/* Reply Preview */}
-                            <AnimatePresence>
-                                {replyingTo && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="mb-2 flex items-center justify-between rounded-lg border-l-4 border-primary-500 bg-zinc-100 px-2 py-1.5 dark:bg-zinc-800 sm:mb-3 sm:px-3 sm:py-2"
-                                    >
-                                        <div className="flex items-center gap-2 overflow-hidden">
-                                            <svg className="hidden h-4 w-4 flex-shrink-0 text-primary-500 sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                            </svg>
-                                            <div className="min-w-0">
-                                                <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
-                                                    Membalas {replyingTo.senderName}
-                                                </span>
-                                                <p className="truncate text-xs text-zinc-500">{replyingTo.content}</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={cancelReply}
-                                            className="ml-2 flex-shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:hover:bg-zinc-700"
+                                {/* Pending Files Preview */}
+                                <AnimatePresence>
+                                    {pendingFiles.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mb-2 flex flex-wrap gap-1.5 sm:mb-3 sm:gap-2"
                                         >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            {/* Pending Files Preview */}
-                            <AnimatePresence>
-                                {pendingFiles.length > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="mb-2 flex flex-wrap gap-1.5 sm:mb-3 sm:gap-2"
-                                    >
-                                        {pendingFiles.map((pf) => (
-                                            <motion.div
-                                                key={pf.id}
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
-                                                className="relative"
-                                            >
-                                                {pf.preview ? (
-                                                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 sm:h-20 sm:w-20">
-                                                        <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" />
-                                                        <button
-                                                            onClick={() => removePendingFile(pf.id)}
-                                                            className="absolute -right-1 -top-1 rounded-full bg-red-500 p-0.5 text-white shadow-md hover:bg-red-600"
-                                                        >
-                                                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="relative flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-800 sm:gap-2 sm:px-3 sm:py-2">
-                                                        <svg className="h-4 w-4 text-zinc-500 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        <div className="max-w-[80px] sm:max-w-[100px]">
-                                                            <p className="truncate text-xs font-medium text-zinc-700 dark:text-zinc-300">{pf.file.name}</p>
-                                                            <p className="text-xs text-zinc-500">{formatFileSize(pf.file.size)}</p>
+                                            {pendingFiles.map((pf) => (
+                                                <motion.div
+                                                    key={pf.id}
+                                                    initial={{ opacity: 0, scale: 0.8 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.8 }}
+                                                    className="relative"
+                                                >
+                                                    {pf.preview ? (
+                                                        <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/50 sm:h-20 sm:w-20">
+                                                            <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" />
+                                                            <button
+                                                                onClick={() => removePendingFile(pf.id)}
+                                                                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            onClick={() => removePendingFile(pf.id)}
-                                                            className="ml-1 rounded p-0.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:hover:bg-zinc-700"
-                                                        >
-                                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    ) : (
+                                                        <div className="relative flex items-center gap-1.5 rounded-xl border border-white/50 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2" style={{ background: 'rgba(255,255,255,0.5)' }}>
+                                                            <svg className="h-4 w-4 text-[#6B7280] sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                             </svg>
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                                            <div className="max-w-[80px] sm:max-w-[100px]">
+                                                                <p className="truncate text-xs font-medium text-[#4A4A4A]">{pf.file.name}</p>
+                                                                <p className="text-xs text-[#6B7280]">{formatFileSize(pf.file.size)}</p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => removePendingFile(pf.id)}
+                                                                className="ml-1 flex h-6 w-6 items-center justify-center rounded text-[#6B7280] transition-colors hover:bg-white/50"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
-                            {/* Mention Suggestions Popup */}
-                            <AnimatePresence>
-                                {showMentionList && filteredMembers.length > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        className="mb-2 max-h-32 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 sm:max-h-40"
-                                    >
-                                        {filteredMembers.map((member, index) => (
-                                            <button
-                                                key={member.id}
-                                                onClick={() => insertMention(member)}
-                                                className={`flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors sm:px-3 sm:py-2 ${
-                                                    index === selectedMentionIndex
-                                                        ? 'bg-primary-50 dark:bg-primary-900/30'
-                                                        : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'
-                                                }`}
-                                            >
-                                                {'isAI' in member && member.isAI ? (
-                                                    // AI Avatar
-                                                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-accent-500 sm:h-8 sm:w-8">
-                                                        <svg className="h-3.5 w-3.5 text-white sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                        </svg>
+                                {/* Mention Suggestions Popup */}
+                                <AnimatePresence>
+                                    {showMentionList && filteredMembers.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            className="mb-2 max-h-32 overflow-y-auto rounded-xl border border-white/50 bg-white/90 shadow-lg backdrop-blur-sm sm:max-h-40"
+                                        >
+                                            {filteredMembers.map((member, index) => (
+                                                <button
+                                                    key={member.id}
+                                                    onClick={() => insertMention(member)}
+                                                    className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${
+                                                        index === selectedMentionIndex
+                                                            ? 'bg-[rgba(136,22,28,0.08)]'
+                                                            : 'hover:bg-[rgba(107,114,128,0.08)]'
+                                                    }`}
+                                                >
+                                                    {'isAI' in member && member.isAI ? (
+                                                        // AI Avatar
+                                                        <div 
+                                                            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full sm:h-8 sm:w-8"
+                                                            style={{ background: 'linear-gradient(135deg, #88161c 0%, #a41219 100%)', border: '1px solid rgba(255,255,255,0.2)' }}
+                                                        >
+                                                            <svg className="h-3.5 w-3.5 text-white sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </div>
+                                                    ) : (
+                                                        // Member Avatar
+                                                        <div 
+                                                            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full sm:h-8 sm:w-8"
+                                                            style={{ background: 'rgba(136,22,28,0.08)' }}
+                                                        >
+                                                            <span className="text-xs font-bold text-[#88161c] sm:text-sm">
+                                                                {member.name.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className={`truncate text-sm font-medium ${'isAI' in member && member.isAI ? 'text-[#88161c]' : 'text-[#4A4A4A]'}`}>
+                                                            {'isAI' in member && member.isAI ? '@AI' : member.name}
+                                                        </p>
+                                                        <p className="hidden truncate text-xs text-[#6B7280] sm:block">{member.email}</p>
                                                     </div>
-                                                ) : (
-                                                    // Member Avatar
-                                                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 sm:h-8 sm:w-8">
-                                                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 sm:text-sm">
-                                                            {member.name.charAt(0).toUpperCase()}
+                                                    {'isAI' in member && member.isAI && (
+                                                        <span 
+                                                            className="hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline-block"
+                                                            style={{ background: 'rgba(136,22,28,0.1)', color: '#88161c' }}
+                                                        >
+                                                            Asisten
                                                         </span>
-                                                    </div>
-                                                )}
-                                                <div className="min-w-0 flex-1">
-                                                    <p className={`truncate text-sm font-medium ${'isAI' in member && member.isAI ? 'text-primary-600 dark:text-primary-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                                                        {'isAI' in member && member.isAI ? '@AI' : member.name}
-                                                    </p>
-                                                    <p className="hidden truncate text-xs text-zinc-500 sm:block">{member.email}</p>
-                                                </div>
-                                                {'isAI' in member && member.isAI && (
-                                                    <span className="hidden rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 sm:inline-block">
-                                                        Asisten
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
-                            <form onSubmit={handleSubmit} className="flex gap-1.5 sm:gap-2">
-                                {/* Hidden file input */}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    multiple
-                                    accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                />
-                                
-                                {/* File upload button */}
+                                <form onSubmit={handleSubmit} className="flex gap-2">
+                                    {/* Hidden file input */}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
+                                        onChange={handleFileSelect}
+                                        className="hidden"
+                                    />
+                                    
+                                    {/* File upload button */}
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={!isConnected || sessionClosed}
-                                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border-2 border-zinc-200 text-zinc-500 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:hover:border-primary-600 dark:hover:bg-primary-900/20 sm:h-11 sm:w-11"
-                                    title={sessionClosed ? "Sesi telah ditutup" : "Lampirkan file"}
-                                >
-                                    <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                    </svg>
-                                </button>
+                                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-white/50 text-[#6B7280] transition-colors hover:border-[#88161c] hover:text-[#88161c] disabled:cursor-not-allowed disabled:opacity-50"
+                                        style={{ background: 'rgba(255,255,255,0.5)' }}
+                                        title={sessionClosed ? "Sesi telah ditutup" : "Lampirkan file"}
+                                    >
+                                        <Paperclip className="h-5 w-5" />
+                                    </button>
 
-                                <div className="relative flex-1">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={newMessage}
-                                        onChange={handleInputChange}
-                                        onBlur={handleInputBlur}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder={
-                                            sessionClosed
-                                                ? "Sesi telah ditutup"
-                                                : replyingTo
-                                                ? `Balas ${replyingTo.senderName}...`
-                                                : "Ketik @ untuk menyebut..."
-                                        }
-                                        disabled={sessionClosed}
-                                        className="input-field h-10 w-full text-sm disabled:cursor-not-allowed sm:h-11 sm:text-base"
-                                    />
-                                </div>
+                                    <div className="relative flex-1">
+                                        <input
+                                            ref={inputRef}
+                                            type="text"
+                                            value={newMessage}
+                                            onChange={handleInputChange}
+                                            onBlur={handleInputBlur}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder={
+                                                sessionClosed
+                                                    ? "Sesi telah ditutup"
+                                                    : replyingTo
+                                                    ? `Balas ${replyingTo.senderName}...`
+                                                    : "Ketik @ untuk menyebut..."
+                                            }
+                                            disabled={sessionClosed}
+                                            className="h-11 w-full rounded-xl border border-white/50 bg-white/60 px-4 text-sm text-[#4A4A4A] placeholder-[#9CA3AF] shadow-sm outline-none transition-all focus:border-[#88161c] focus:ring-2 focus:ring-[rgba(136,22,28,0.1)] disabled:cursor-not-allowed sm:text-base"
+                                        />
+                                    </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={(!newMessage.trim() && pendingFiles.length === 0) || !isConnected || isUploading || sessionClosed}
-                                    className="btn-primary flex h-10 items-center gap-1 px-3 transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:gap-2 sm:px-4"
-                                    title={sessionClosed ? "Sesi telah ditutup" : "Kirim pesan"}
-                                >
-                                    {isUploading ? (
-                                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                        </svg>
-                                    ) : (
-                                        <>
-                                            <span className="hidden sm:inline">Kirim</span>
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                    <button
+                                        type="submit"
+                                        disabled={(!newMessage.trim() && pendingFiles.length === 0) || !isConnected || isUploading || sessionClosed}
+                                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-white transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4"
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                            boxShadow: '0 8px 32px rgba(136,22,28,0.4)',
+                                        }}
+                                        title={sessionClosed ? "Sesi telah ditutup" : "Kirim pesan"}
+                                    >
+                                        {isUploading ? (
+                                            <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                             </svg>
-                                        </>
-                                    )}
-                                </button>
-                            </form>
-                            <p className="mt-1.5 text-center text-xs text-zinc-400 sm:mt-2">
-                                Tips: Sebut <span className="font-medium text-primary-500">@ai</span> untuk bertanya kepada Asisten AI.
-                            </p>
+                                        ) : (
+                                            <>
+                                                <span className="hidden sm:mr-1 sm:inline text-sm font-medium">Kirim</span>
+                                                <Send className="h-4 w-4" />
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                                <p className="mt-2 text-center text-xs text-[#9CA3AF]">
+                                    Tips: Sebut <span className="font-medium text-[#88161c]">@ai</span> untuk bertanya kepada Asisten AI.
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </LiquidGlassCard>
                 </div>
 
                 {/* Right Sidebar - Desktop */}
@@ -1630,156 +1656,194 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className={`rounded-xl border p-4 shadow-sm transition-all ${
-                                    discussionQuality.qualityScore >= 70
-                                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                                        : discussionQuality.qualityScore >= 40
-                                          ? 'border-caution-200 bg-caution-50 dark:border-caution-800 dark:bg-caution-900/20'
-                                          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                                }`}
                             >
-                                <div className="mb-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <svg className="h-4 w-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                        </svg>
-                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                                            Kualitas Diskusi
-                                        </h3>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowQualityFeedback(!showQualityFeedback)}
-                                        className="rounded p-1 text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50"
-                                    >
-                                        <svg className={`h-4 w-4 transition-transform ${showQualityFeedback ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                
-                                {/* Quality Score */}
-                                <div className="mb-3 flex items-center gap-3">
-                                    <div className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold ${
+                                <LiquidGlassCard 
+                                    intensity="light" 
+                                    className={`p-4 ${
                                         discussionQuality.qualityScore >= 70
-                                            ? 'bg-green-500 text-white'
+                                            ? 'border-l-4 border-green-500'
                                             : discussionQuality.qualityScore >= 40
-                                              ? 'bg-caution-500 text-white'
-                                              : 'bg-red-500 text-white'
-                                    }`}>
-                                        {Math.round(discussionQuality.qualityScore)}
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-medium ${
-                                            discussionQuality.qualityScore >= 70
-                                                ? 'text-green-700 dark:text-green-300'
-                                                : discussionQuality.qualityScore >= 40
-                                                  ? 'text-caution-700 dark:text-caution-300'
-                                                  : 'text-red-700 dark:text-red-300'
-                                        }`}>
-                                            {discussionQuality.qualityScore >= 70
-                                                ? 'Diskusi Berkualitas!'
-                                                : discussionQuality.qualityScore >= 40
-                                                  ? 'Terus Tingkatkan'
-                                                  : 'Perlu Perhatian'}
-                                        </p>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            HOT: {discussionQuality.hotPercentage.toFixed(1)}%
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Engagement Types - Collapsible */}
-                                <AnimatePresence>
-                                    {showQualityFeedback && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden"
+                                              ? 'border-l-4 border-amber-500'
+                                              : 'border-l-4 border-red-500'
+                                    }`} 
+                                    lightMode={true}
+                                >
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <BarChart3 className="h-4 w-4 text-[#88161c]" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+                                                Kualitas Diskusi
+                                            </h3>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowQualityFeedback(!showQualityFeedback)}
+                                            className="flex h-7 w-7 items-center justify-center rounded-lg text-[#6B7280] transition-colors hover:bg-white/50"
                                         >
-                                            <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                                                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Tipe Keterlibatan:</p>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {Object.entries(discussionQuality.engagementTypes).map(([type, count]) => (
-                                                        <span
-                                                            key={type}
-                                                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                                type === 'Cognitive'
-                                                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                                                    : type === 'Behavioral'
-                                                                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                                                      : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'
-                                                            }`}
-                                                        >
-                                                            {type === 'Cognitive' ? '🧠' : type === 'Behavioral' ? '⚡' : '💭'}
-                                                            {type}: {count}
-                                                        </span>
-                                                    ))}
+                                            <svg className={`h-4 w-4 transition-transform ${showQualityFeedback ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Quality Score */}
+                                    <div className="mb-3 flex items-center gap-3">
+                                        <div 
+                                            className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold ${
+                                                discussionQuality.qualityScore >= 70
+                                                    ? 'text-white'
+                                                    : discussionQuality.qualityScore >= 40
+                                                      ? 'text-white'
+                                                      : 'text-white'
+                                            }`}
+                                            style={{
+                                                background: discussionQuality.qualityScore >= 70
+                                                    ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                                                    : discussionQuality.qualityScore >= 40
+                                                      ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                                      : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                            }}
+                                        >
+                                            {Math.round(discussionQuality.qualityScore)}
+                                        </div>
+                                        <div>
+                                            <p className={`text-sm font-medium ${
+                                                discussionQuality.qualityScore >= 70
+                                                    ? 'text-green-700'
+                                                    : discussionQuality.qualityScore >= 40
+                                                      ? 'text-amber-700'
+                                                      : 'text-red-700'
+                                            }`}>
+                                                {discussionQuality.qualityScore >= 70
+                                                    ? 'Diskusi Berkualitas!'
+                                                    : discussionQuality.qualityScore >= 40
+                                                      ? 'Terus Tingkatkan'
+                                                      : 'Perlu Perhatian'}
+                                            </p>
+                                            <p className="text-xs text-[#6B7280]">HOT: {discussionQuality.hotPercentage.toFixed(1)}%</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Engagement Types - Collapsible */}
+                                    <AnimatePresence>
+                                        {showQualityFeedback && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="space-y-2 border-t border-white/50 pt-3">
+                                                    <p className="text-xs font-medium text-[#4A4A4A]">Tipe Keterlibatan:</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {Object.entries(discussionQuality.engagementTypes).map(([type, count]) => (
+                                                            <span
+                                                                key={type}
+                                                                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                                                                style={{
+                                                                    background: type === 'Cognitive'
+                                                                        ? 'rgba(59,130,246,0.1)'
+                                                                        : type === 'Behavioral'
+                                                                          ? 'rgba(168,85,247,0.1)'
+                                                                          : 'rgba(236,72,153,0.1)',
+                                                                    color: type === 'Cognitive'
+                                                                        ? '#2563eb'
+                                                                        : type === 'Behavioral'
+                                                                          ? '#9333ea'
+                                                                          : '#db2777',
+                                                                    border: `1px solid ${type === 'Cognitive'
+                                                                        ? 'rgba(59,130,246,0.2)'
+                                                                        : type === 'Behavioral'
+                                                                          ? 'rgba(168,85,247,0.2)'
+                                                                          : 'rgba(236,72,153,0.2)'}`,
+                                                                }}
+                                                            >
+                                                                {type === 'Cognitive' ? '🧠' : type === 'Behavioral' ? '⚡' : '💭'}
+                                                                {type}: {count}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <div 
+                                                        className="mt-2 rounded-xl p-3"
+                                                        style={{ background: 'rgba(255,255,255,0.5)' }}
+                                                    >
+                                                        <p className="text-xs text-[#6B7280]">
+                                                            {discussionQuality.qualityScore >= 70
+                                                                ? '✨ Luar biasa! Diskusi menunjukkan pemikiran tingkat tinggi.'
+                                                                : discussionQuality.qualityScore >= 40
+                                                                  ? '💡 Coba ajukan pertanyaan analisis atau evaluasi untuk meningkatkan kualitas.'
+                                                                  : '🎯 Gunakan kata-kata seperti "mengapa", "bagaimana jika", atau "bandingkan" untuk diskusi lebih mendalam.'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-2 rounded-lg bg-white/50 p-2 dark:bg-zinc-800/50">
-                                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                                                        {discussionQuality.qualityScore >= 70
-                                                            ? '✨ Luar biasa! Diskusi menunjukkan pemikiran tingkat tinggi.'
-                                                            : discussionQuality.qualityScore >= 40
-                                                              ? '💡 Coba ajukan pertanyaan analisis atau evaluasi untuk meningkatkan kualitas.'
-                                                              : '🎯 Gunakan kata-kata seperti "mengapa", "bagaimana jika", atau "bandingkan" untuk diskusi lebih mendalam.'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </LiquidGlassCard>
                             </motion.div>
                         )}
                     </AnimatePresence>
 
                     {/* My Goal Section */}
                     {hasGoal && goal && (
-                        <div className="rounded-xl border border-accent-200 bg-accent-50 p-4 shadow-sm dark:border-accent-800 dark:bg-accent-900/20">
+                        <LiquidGlassCard intensity="light" className="p-4" lightMode={true}>
                             <div className="mb-2 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-700 dark:text-accent-300">
+                                <div 
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl"
+                                    style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}
+                                >
+                                    <svg className="h-4 w-4 text-[#88161c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-[#88161c]">
                                     Tujuan Saya
                                 </h3>
                             </div>
-                            <p className="text-sm text-accent-800 dark:text-accent-200">
+                            <p className="text-sm text-[#4A4A4A]">
                                 {goal.content}
                             </p>
-                        </div>
+                        </LiquidGlassCard>
                     )}
 
                     {/* Set Goal Prompt - Desktop */}
                     {!hasGoal && (
-                        <div className="rounded-xl border border-caution-200 bg-caution-50 p-4 shadow-sm dark:border-caution-800 dark:bg-caution-900/20">
+                        <LiquidGlassCard intensity="light" className="p-4" lightMode={true}>
                             <div className="mb-2 flex items-center gap-2">
-                                <svg className="h-4 w-4 text-caution-600 dark:text-caution-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                                <h3 className="text-xs font-semibold uppercase tracking-wider text-caution-700 dark:text-caution-300">
+                                <div 
+                                    className="flex h-8 w-8 items-center justify-center rounded-xl"
+                                    style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+                                >
+                                    <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600">
                                     Belum Ada Tujuan
                                 </h3>
                             </div>
-                            <p className="mb-3 text-xs text-caution-700 dark:text-caution-300">
+                            <p className="mb-3 text-xs text-[#6B7280]">
                                 Tetapkan tujuan untuk membantu fokus diskusi Anda.
                             </p>
                             <Link
                                 href={student.goals.create.url({ course: course.id, chatSpace: chatSpace.id })}
-                                className="block w-full rounded-lg bg-caution-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-caution-700"
+                                className="block w-full rounded-xl px-3 py-2 text-center text-xs font-medium text-white transition-opacity hover:opacity-90"
+                                style={{ 
+                                    background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                    boxShadow: '0 8px 32px rgba(136,22,28,0.4)',
+                                }}
                             >
                                 Tetapkan Tujuan
                             </Link>
-                        </div>
+                        </LiquidGlassCard>
                     )}
 
                     {/* Members Section */}
-                    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <LiquidGlassCard intensity="light" className="p-4" lightMode={true}>
                         <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                                 Anggota
                             </h3>
-                            <span className="text-xs text-zinc-400">{group.members?.length || 0}</span>
+                            <span className="text-xs text-[#9CA3AF]">{group.members?.length || 0}</span>
                         </div>
                         <div className="space-y-2">
                             {group.members?.map((member) => {
@@ -1787,21 +1851,24 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 return (
                                     <div key={member.id} className="flex items-center gap-3">
                                         <div className="relative">
-                                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-medium text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">
+                                            <div 
+                                                className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-[#88161c]"
+                                                style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}
+                                            >
                                                 {member.name.charAt(0).toUpperCase()}
                                             </div>
                                             {isOnline && (
-                                                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-zinc-900" />
+                                                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                            <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                                 {member.name}
                                                 {member.id === auth.user?.id && (
-                                                    <span className="ml-1 text-xs text-zinc-400">(kamu)</span>
+                                                    <span className="ml-1 text-xs text-[#9CA3AF]">(kamu)</span>
                                                 )}
                                             </p>
-                                            <p className="truncate text-xs text-zinc-500">
+                                            <p className="truncate text-xs text-[#6B7280]">
                                                 {isOnline ? 'Aktif' : 'Tidak aktif'}
                                             </p>
                                         </div>
@@ -1809,38 +1876,44 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 );
                             })}
                         </div>
-                    </div>
+                    </LiquidGlassCard>
 
                     {/* Shared Resources Section */}
-                    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                    <LiquidGlassCard intensity="light" className="p-4" lightMode={true}>
+                        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                             Sumber Daya Bersama
                         </h3>
                         <div className="space-y-2">
-                            <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                            <div className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/30">
+                                <div 
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold text-blue-600"
+                                    style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+                                >
                                     DOC
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                    <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                         Panduan Mata Kuliah
                                     </p>
-                                    <p className="text-xs text-zinc-500">Dibagikan oleh dosen</p>
+                                    <p className="text-xs text-[#6B7280]">Dibagikan oleh dosen</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-xs font-bold text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                            <div className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/30">
+                                <div 
+                                    className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold text-green-600"
+                                    style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
+                                >
                                     PDF
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                    <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                         Template Tugas
                                     </p>
-                                    <p className="text-xs text-zinc-500">Ditambahkan 2 jam lalu</p>
+                                    <p className="text-xs text-[#6B7280]">Ditambahkan 2 jam lalu</p>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </LiquidGlassCard>
                 </aside>
 
                 {/* Right Sidebar - Mobile Overlay */}
@@ -1860,55 +1933,62 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 animate={{ x: 0 }}
                                 exit={{ x: 288 }}
                                 transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-                                className="fixed inset-y-0 right-0 z-50 w-72 overflow-y-auto border-l border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:hidden"
+                                className="fixed inset-y-0 right-0 z-50 w-72 overflow-y-auto border-l border-white/50 p-4 lg:hidden"
+                                style={{ 
+                                    background: 'linear-gradient(135deg, #f5f0f0 0%, #e8e4f0 50%, #f0e8e8 100%)',
+                                }}
                             >
                                 {/* Close button */}
                                 <div className="mb-4 flex items-center justify-between">
-                                    <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">Detail</h2>
+                                    <h2 className="font-semibold text-[#4A4A4A]" style={headingStyle}>Detail</h2>
                                     <button
                                         onClick={() => setShowRightSidebar(false)}
-                                        className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                        className="flex h-10 w-10 items-center justify-center rounded-xl text-[#6B7280] transition-colors hover:bg-white/50"
+                                        style={{ background: 'rgba(255,255,255,0.4)' }}
                                     >
-                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
+                                        <X className="h-5 w-5" />
                                     </button>
                                 </div>
 
                                 {/* Discussion Quality Feedback - Mobile */}
                                 {discussionQuality && (
-                                    <div className={`mb-4 rounded-lg border p-3 ${
-                                        discussionQuality.qualityScore >= 70
-                                            ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                                            : discussionQuality.qualityScore >= 40
-                                              ? 'border-caution-200 bg-caution-50 dark:border-caution-800 dark:bg-caution-900/20'
-                                              : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                                    }`}>
+                                    <LiquidGlassCard 
+                                        intensity="light" 
+                                        className={`mb-4 p-3 ${
+                                            discussionQuality.qualityScore >= 70
+                                                ? 'border-l-4 border-green-500'
+                                                : discussionQuality.qualityScore >= 40
+                                                  ? 'border-l-4 border-amber-500'
+                                                  : 'border-l-4 border-red-500'
+                                        }`} 
+                                        lightMode={true}
+                                    >
                                         <div className="mb-2 flex items-center gap-2">
-                                            <svg className="h-4 w-4 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                            </svg>
-                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                                            <BarChart3 className="h-4 w-4 text-[#88161c]" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                                                 Kualitas Diskusi
                                             </h3>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <div className={`flex h-10 w-10 items-center justify-center rounded-full text-base font-bold ${
-                                                discussionQuality.qualityScore >= 70
-                                                    ? 'bg-green-500 text-white'
-                                                    : discussionQuality.qualityScore >= 40
-                                                      ? 'bg-caution-500 text-white'
-                                                      : 'bg-red-500 text-white'
-                                            }`}>
+                                            <div 
+                                                className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold text-white"
+                                                style={{
+                                                    background: discussionQuality.qualityScore >= 70
+                                                        ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                                                        : discussionQuality.qualityScore >= 40
+                                                          ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                                          : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                                }}
+                                            >
                                                 {Math.round(discussionQuality.qualityScore)}
                                             </div>
                                             <div>
                                                 <p className={`text-sm font-medium ${
                                                     discussionQuality.qualityScore >= 70
-                                                        ? 'text-green-700 dark:text-green-300'
+                                                        ? 'text-green-700'
                                                         : discussionQuality.qualityScore >= 40
-                                                          ? 'text-caution-700 dark:text-caution-300'
-                                                          : 'text-red-700 dark:text-red-300'
+                                                          ? 'text-amber-700'
+                                                          : 'text-red-700'
                                                 }`}>
                                                     {discussionQuality.qualityScore >= 70
                                                         ? 'Diskusi Berkualitas!'
@@ -1916,76 +1996,96 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                                           ? 'Terus Tingkatkan'
                                                           : 'Perlu Perhatian'}
                                                 </p>
-                                                <p className="text-xs text-zinc-500">HOT: {discussionQuality.hotPercentage.toFixed(1)}%</p>
+                                                <p className="text-xs text-[#6B7280]">HOT: {discussionQuality.hotPercentage.toFixed(1)}%</p>
                                             </div>
                                         </div>
                                         <div className="mt-2 flex flex-wrap gap-1">
                                             {Object.entries(discussionQuality.engagementTypes).map(([type, count]) => (
                                                 <span
                                                     key={type}
-                                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                        type === 'Cognitive'
-                                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                                                    style={{
+                                                        background: type === 'Cognitive'
+                                                            ? 'rgba(59,130,246,0.1)'
                                                             : type === 'Behavioral'
-                                                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                                              : 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300'
-                                                    }`}
+                                                              ? 'rgba(168,85,247,0.1)'
+                                                              : 'rgba(236,72,153,0.1)',
+                                                        color: type === 'Cognitive'
+                                                            ? '#2563eb'
+                                                            : type === 'Behavioral'
+                                                              ? '#9333ea'
+                                                              : '#db2777',
+                                                    }}
                                                 >
                                                     {type === 'Cognitive' ? '🧠' : type === 'Behavioral' ? '⚡' : '💭'}
                                                     {count}
                                                 </span>
                                             ))}
                                         </div>
-                                    </div>
+                                    </LiquidGlassCard>
                                 )}
 
                                 {/* My Goal Section - Mobile */}
                                 {hasGoal && goal && (
-                                    <div className="mb-4 rounded-lg border border-accent-200 bg-accent-50 p-3 dark:border-accent-800 dark:bg-accent-900/20">
+                                    <LiquidGlassCard intensity="light" className="mb-4 p-3" lightMode={true}>
                                         <div className="mb-2 flex items-center gap-2">
-                                            <svg className="h-4 w-4 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-700 dark:text-accent-300">
+                                            <div 
+                                                className="flex h-8 w-8 items-center justify-center rounded-xl"
+                                                style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}
+                                            >
+                                                <svg className="h-4 w-4 text-[#88161c]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#88161c]">
                                                 Tujuan Saya
                                             </h3>
                                         </div>
-                                        <p className="text-sm text-accent-800 dark:text-accent-200">
+                                        <p className="text-sm text-[#4A4A4A]">
                                             {goal.content}
                                         </p>
-                                    </div>
+                                    </LiquidGlassCard>
                                 )}
 
                                 {/* Set Goal Prompt - Mobile */}
                                 {!hasGoal && (
-                                    <div className="mb-4 rounded-lg border border-caution-200 bg-caution-50 p-3 dark:border-caution-800 dark:bg-caution-900/20">
+                                    <LiquidGlassCard intensity="light" className="mb-4 p-3" lightMode={true}>
                                         <div className="mb-2 flex items-center gap-2">
-                                            <svg className="h-4 w-4 text-caution-600 dark:text-caution-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                            </svg>
-                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-caution-700 dark:text-caution-300">
+                                            <div 
+                                                className="flex h-8 w-8 items-center justify-center rounded-xl"
+                                                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+                                            >
+                                                <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600">
                                                 Belum Ada Tujuan
                                             </h3>
                                         </div>
-                                        <p className="mb-3 text-xs text-caution-700 dark:text-caution-300">
+                                        <p className="mb-3 text-xs text-[#6B7280]">
                                             Tetapkan tujuan untuk membantu fokus diskusi Anda.
                                         </p>
                                         <Link
                                             href={student.goals.create.url({ course: course.id, chatSpace: chatSpace.id })}
-                                            className="block w-full rounded-lg bg-caution-600 px-3 py-2 text-center text-xs font-medium text-white hover:bg-caution-700"
+                                            className="block w-full rounded-xl px-3 py-2 text-center text-xs font-medium text-white transition-opacity hover:opacity-90"
+                                            style={{ 
+                                                background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                                boxShadow: '0 8px 32px rgba(136,22,28,0.4)',
+                                            }}
                                         >
                                             Tetapkan Tujuan
                                         </Link>
-                                    </div>
+                                    </LiquidGlassCard>
                                 )}
 
                                 {/* Members Section */}
                                 <div className="mb-6">
                                     <div className="mb-3 flex items-center justify-between">
-                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                                             Anggota
                                         </h3>
-                                        <span className="text-xs text-zinc-400">{group.members?.length || 0}</span>
+                                        <span className="text-xs text-[#9CA3AF]">{group.members?.length || 0}</span>
                                     </div>
                                     <div className="space-y-2">
                                         {group.members?.map((member) => {
@@ -1993,21 +2093,24 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                             return (
                                                 <div key={member.id} className="flex items-center gap-3">
                                                     <div className="relative">
-                                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-medium text-primary-700 dark:bg-primary-900/50 dark:text-primary-300">
+                                                        <div 
+                                                            className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-[#88161c]"
+                                                            style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}
+                                                        >
                                                             {member.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         {isOnline && (
-                                                            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-zinc-900" />
+                                                            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                                                         )}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                        <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                                             {member.name}
                                                             {member.id === auth.user?.id && (
-                                                                <span className="ml-1 text-xs text-zinc-400">(kamu)</span>
+                                                                <span className="ml-1 text-xs text-[#9CA3AF]">(kamu)</span>
                                                             )}
                                                         </p>
-                                                        <p className="truncate text-xs text-zinc-500">
+                                                        <p className="truncate text-xs text-[#6B7280]">
                                                             {isOnline ? 'Aktif' : 'Tidak aktif'}
                                                         </p>
                                                     </div>
@@ -2019,30 +2122,36 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
                                 {/* Shared Resources Section */}
                                 <div>
-                                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                                         Sumber Daya Bersama
                                     </h3>
                                     <div className="space-y-2">
-                                        <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-xs font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                        <div className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/30">
+                                            <div 
+                                                className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold text-blue-600"
+                                                style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+                                            >
                                                 DOC
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                                     Panduan Mata Kuliah
                                                 </p>
-                                                <p className="text-xs text-zinc-500">Dibagikan oleh dosen</p>
+                                                <p className="text-xs text-[#6B7280]">Dibagikan oleh dosen</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-xs font-bold text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                        <div className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/30">
+                                            <div 
+                                                className="flex h-10 w-10 items-center justify-center rounded-xl text-xs font-bold text-green-600"
+                                                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}
+                                            >
                                                 PDF
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                                <p className="truncate text-sm font-medium text-[#4A4A4A]">
                                                     Template Tugas
                                                 </p>
-                                                <p className="text-xs text-zinc-500">Ditambahkan 2 jam lalu</p>
+                                                <p className="text-xs text-[#6B7280]">Ditambahkan 2 jam lalu</p>
                                             </div>
                                         </div>
                                     </div>
@@ -2068,9 +2177,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                             onClick={closeImagePreview}
                             className="absolute right-2 top-2 rounded-full bg-white/10 p-1.5 text-white transition-colors hover:bg-white/20 sm:right-4 sm:top-4 sm:p-2"
                         >
-                            <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="h-5 w-5 sm:h-6 sm:w-6" />
                         </button>
 
                         {/* Image name */}
@@ -2164,45 +2271,52 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+                            className="w-full max-w-lg rounded-2xl border border-white/50 p-6 shadow-xl"
+                            style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)' }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="mb-4 flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
-                                    <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div 
+                                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                                    style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.2)' }}
+                                >
+                                    <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                    <h3 className="text-lg font-semibold text-[#4A4A4A]" style={headingStyle}>
                                         Refleksi Sesi
                                     </h3>
-                                    <p className="text-sm text-zinc-500">
+                                    <p className="text-sm text-[#6B7280]">
                                         {chatSpace.name}
                                     </p>
                                 </div>
                             </div>
 
-                            <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+                            <p className="mb-2 text-sm text-[#6B7280]">
                                 {sessionClosedMessage || 'Sesi diskusi ini telah ditutup oleh dosen.'}
                             </p>
-                            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                            <p className="mb-4 text-sm text-[#6B7280]">
                                 Silakan refleksikan pembelajaran Anda selama sesi ini:
                             </p>
 
                             {goal && (
-                                <div className="mb-4 rounded-lg border border-accent-200 bg-accent-50 p-3 dark:border-accent-800 dark:bg-accent-900/20">
-                                    <p className="text-xs font-medium text-accent-700 dark:text-accent-300">
+                                <div 
+                                    className="mb-4 rounded-xl p-3"
+                                    style={{ background: 'rgba(136,22,28,0.06)', border: '1px solid rgba(136,22,28,0.12)' }}
+                                >
+                                    <p className="text-xs font-medium text-[#88161c]">
                                         Tujuan pembelajaran Anda:
                                     </p>
-                                    <p className="mt-1 text-sm text-accent-800 dark:text-accent-200">
+                                    <p className="mt-1 text-sm text-[#4A4A4A]">
                                         {goal.content}
                                     </p>
                                 </div>
                             )}
 
                             <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                <label className="mb-2 block text-sm font-medium text-[#4A4A4A]">
                                     Refleksi Anda <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
@@ -2210,14 +2324,14 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                     onChange={(e) => setReflectionContent(e.target.value)}
                                     placeholder="Bagaimana pembelajaran Anda selama sesi ini? Apa yang sudah dipahami? Apa yang masih perlu dipelajari?"
                                     rows={5}
-                                    className="input-field w-full resize-none"
+                                    className="w-full resize-none rounded-xl border border-white/50 bg-white/60 px-4 py-3 text-sm text-[#4A4A4A] placeholder-[#9CA3AF] outline-none transition-all focus:border-[#88161c] focus:ring-2 focus:ring-[rgba(136,22,28,0.1)] disabled:cursor-not-allowed"
                                     disabled={isSubmittingReflection}
                                 />
                                 <div className="mt-1 flex items-center justify-between">
                                     <p className={`text-xs ${
                                         reflectionContent.length < 50
-                                            ? 'text-zinc-400'
-                                            : 'text-green-600 dark:text-green-400'
+                                            ? 'text-[#9CA3AF]'
+                                            : 'text-green-600'
                                     }`}>
                                         {reflectionContent.length}/50 karakter minimum
                                     </p>
@@ -2230,7 +2344,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                             <div className="flex items-center justify-end gap-3">
                                 <button
                                     onClick={() => setShowReflectionModal(false)}
-                                    className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                                    className="rounded-xl px-4 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-white/50"
                                     disabled={isSubmittingReflection}
                                 >
                                     Nanti
@@ -2238,7 +2352,11 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 <button
                                     onClick={handleSubmitReflection}
                                     disabled={isSubmittingReflection || reflectionContent.length < 50}
-                                    className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                                    style={{ 
+                                        background: 'linear-gradient(135deg, rgba(168,85,247,0.92) 0%, rgba(147,51,234,0.96) 100%)',
+                                        boxShadow: '0 8px 32px rgba(168,85,247,0.4)',
+                                    }}
                                 >
                                     {isSubmittingReflection ? (
                                         <>
@@ -2250,9 +2368,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                         </>
                                     ) : (
                                         <>
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <CheckCircle className="h-4 w-4" />
                                             <span>Kirim Refleksi</span>
                                         </>
                                     )}
@@ -2277,31 +2393,33 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+                            className="w-full max-w-md rounded-2xl border border-white/50 p-6 shadow-xl"
+                            style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)' }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="mb-4 flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-caution-100 dark:bg-caution-900/30">
-                                    <svg className="h-5 w-5 text-caution-600 dark:text-caution-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
+                                <div 
+                                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                                    style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}
+                                >
+                                    <AlertTriangle className="h-5 w-5 text-amber-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                    <h3 className="text-lg font-semibold text-[#4A4A4A]" style={headingStyle}>
                                         Tutup Sesi Diskusi?
                                     </h3>
                                 </div>
                             </div>
 
-                            <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
-                                Anda akan menutup sesi diskusi <span className="font-medium text-zinc-800 dark:text-zinc-200">"{chatSpace.name}"</span>. 
+                            <p className="mb-6 text-sm text-[#6B7280]">
+                                Anda akan menutup sesi diskusi <span className="font-medium text-[#4A4A4A]">"{chatSpace.name}"</span>. 
                                 Setelah ditutup, anggota grup tidak dapat mengirim pesan lagi sampai dosen membuka kembali sesi ini.
                             </p>
 
                             <div className="flex items-center justify-end gap-3">
                                 <button
                                     onClick={() => setShowCloseConfirmModal(false)}
-                                    className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                                    className="rounded-xl px-4 py-2 text-sm font-medium text-[#6B7280] transition-colors hover:bg-white/50"
                                     disabled={isClosingSession}
                                 >
                                     Batal
@@ -2309,7 +2427,11 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 <button
                                     onClick={handleCloseSession}
                                     disabled={isClosingSession}
-                                    className="flex items-center gap-2 rounded-lg bg-caution-600 px-4 py-2 text-sm font-medium text-white hover:bg-caution-700 disabled:opacity-50"
+                                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                                    style={{ 
+                                        background: 'linear-gradient(135deg, rgba(245,158,11,0.92) 0%, rgba(217,119,6,0.96) 100%)',
+                                        boxShadow: '0 8px 32px rgba(245,158,11,0.4)',
+                                    }}
                                 >
                                     {isClosingSession ? (
                                         <>
@@ -2321,9 +2443,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                         </>
                                     ) : (
                                         <>
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                            </svg>
+                                            <Lock className="h-4 w-4" />
                                             <span>Ya, Tutup Sesi</span>
                                         </>
                                     )}
