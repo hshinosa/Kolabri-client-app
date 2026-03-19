@@ -3,7 +3,18 @@ import { usePage } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
+import { SharedData } from '@/types';
+
 export type ToastType = 'success' | 'error' | 'info';
+
+interface ToastPageProps extends SharedData {
+    flash?: {
+        success?: string;
+        error?: string;
+        info?: string;
+    };
+    errors?: Record<string, string>;
+}
 
 interface ToastMessage {
     id: string;
@@ -12,10 +23,20 @@ interface ToastMessage {
 }
 
 export function ToastNotification({ lightMode = true }: { lightMode?: boolean }) {
-    const { flash, errors } = usePage<any>().props;
+    const { flash, errors } = usePage<ToastPageProps>().props;
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
     useEffect(() => {
+        const addToast = (message: string, type: ToastType) => {
+            const id = Math.random().toString(36).substr(2, 9);
+            setToasts((prev) => [...prev, { id, message, type }]);
+
+            // Auto remove after 4.5 seconds
+            setTimeout(() => {
+                removeToast(id);
+            }, 4500);
+        };
+
         // Handle flash messages
         if (flash?.success) {
             addToast(flash.success, 'success');
@@ -36,16 +57,6 @@ export function ToastNotification({ lightMode = true }: { lightMode?: boolean })
             }
         }
     }, [flash, errors]);
-
-    const addToast = (message: string, type: ToastType) => {
-        const id = Math.random().toString(36).substr(2, 9);
-        setToasts((prev) => [...prev, { id, message, type }]);
-        
-        // Auto remove after 4.5 seconds
-        setTimeout(() => {
-            removeToast(id);
-        }, 4500);
-    };
 
     const removeToast = (id: string) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
