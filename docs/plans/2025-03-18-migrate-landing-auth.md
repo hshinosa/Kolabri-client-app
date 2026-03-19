@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
 
-**Goal:** Copy landing page, login, and register functionality from `C:\Code\CoRegula\CoRegula\client-app` to `C:\Code\testt\CoRegula-client-app`
+**Goal:** Copy landing page, login, and register functionality from `C:\Code\Kolabri\Kolabri\client-app` to `C:\Code\testt\Kolabri-client-app`
 
 **Architecture:** 
 - Source uses glass morphism design with Framer Motion animations
@@ -32,7 +32,7 @@ Run: `mkdir -p resources/js/components/Welcome/utils`
 
 **Files:**
 - Create: `resources/js/components/Welcome/LandingPageContent.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\Welcome\LandingPageContent.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\Welcome\LandingPageContent.tsx`
 
 **Step 1: Copy file content**
 
@@ -57,7 +57,7 @@ Copy the exact content from source to target.
 - Create: `resources/js/components/Welcome/UseCasesSection.tsx`
 
 **Source files:**
-- `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\Welcome\{Component}.tsx`
+- `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\Welcome\{Component}.tsx`
 
 **Step 1: Copy all section component files**
 
@@ -69,7 +69,7 @@ Copy each file from source to target maintaining exact content.
 
 **Files:**
 - Create: `resources/js/components/Welcome/utils/helpers.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\Welcome\utils\helpers.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\Welcome\utils\helpers.tsx`
 
 **Step 1: Copy helpers file**
 
@@ -83,7 +83,7 @@ Copy the exact content - this contains UI primitives (LiquidGlassCard, PrimaryBu
 
 **Files:**
 - Create: `resources/js/components/ui/PasswordInput.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\ui\PasswordInput.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\ui\PasswordInput.tsx`
 
 **Step 1: Copy file**
 
@@ -93,7 +93,7 @@ Copy the exact content - this contains UI primitives (LiquidGlassCard, PrimaryBu
 
 **Files:**
 - Create: `resources/js/components/ui/PasswordStrengthMeter.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\ui\PasswordStrengthMeter.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\ui\PasswordStrengthMeter.tsx`
 
 **Step 1: Copy file**
 
@@ -103,7 +103,7 @@ Copy the exact content - this contains UI primitives (LiquidGlassCard, PrimaryBu
 
 **Files:**
 - Create: `resources/js/components/ui/CustomCheckbox.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\ui\CustomCheckbox.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\ui\CustomCheckbox.tsx`
 
 **Step 1: Copy file**
 
@@ -113,7 +113,7 @@ Copy the exact content - this contains UI primitives (LiquidGlassCard, PrimaryBu
 
 **Files:**
 - Modify: `resources/js/components/ui/input-error.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\ui\input-error.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\ui\input-error.tsx`
 
 **Step 1: Update file**
 
@@ -125,7 +125,7 @@ Replace existing content with source content (uses `text-warning-500` class).
 
 **Files:**
 - Create: `resources/js/components/ui/ToastNotification.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\components\ui\ToastNotification.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\components\ui\ToastNotification.tsx`
 
 **Step 1: Copy file**
 
@@ -137,7 +137,7 @@ Replace existing content with source content (uses `text-warning-500` class).
 
 **Files:**
 - Modify: `resources/js/layouts/guest-layout.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\layouts\guest-layout.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\layouts\guest-layout.tsx`
 
 **Step 1: Backup existing file**
 
@@ -158,7 +158,7 @@ This adds:
 
 **Files:**
 - Modify: `resources/js/pages/welcome.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\pages\welcome.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\pages\welcome.tsx`
 
 **Step 1: Replace content**
 
@@ -174,7 +174,7 @@ Replace default Laravel welcome with full landing page including:
 
 **Files:**
 - Modify: `resources/js/pages/auth/login.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\pages\auth\login.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\pages\auth\login.tsx`
 
 **Step 1: Replace content**
 
@@ -192,7 +192,7 @@ Update to use:
 
 **Files:**
 - Modify: `resources/js/pages/auth/register.tsx`
-- Source: `C:\Code\CoRegula\CoRegula\client-app\resources\js\pages\auth\register.tsx`
+- Source: `C:\Code\Kolabri\Kolabri\client-app\resources\js\pages\auth\register.tsx`
 
 **Step 1: Replace content**
 
