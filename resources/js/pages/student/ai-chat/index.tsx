@@ -8,7 +8,6 @@ import { AiMessage, SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import student from '@/routes/student';
 import { useStudentNav } from '@/components/navigation/student-nav';
-import auth from '@/routes/auth';
 import AppLayout from '@/layouts/app-layout';
 
 interface AiChat {
@@ -70,7 +69,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     };
     const navItems = useStudentNav('ai-chat');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isTyping, setIsTyping] = useState(false);
+    const [isTyping] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
     const [editingChatId, setEditingChatId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
@@ -78,7 +77,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const safeChats = chats ?? [];
-    const messages = activeChat?.messages ?? [];
+    const messages = useMemo(() => activeChat?.messages ?? [], [activeChat?.messages]);
     const userFirstName = useMemo(() => authData.user?.name?.split(' ')[0] || 'Mahasiswa', [authData.user?.name]);
     const isEmptyState = messages.length === 0;
 
@@ -177,7 +176,6 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                 handleCancelRename();
                 router.reload({
                     only: ['chats', 'activeChat', 'flash', 'errors'],
-                    preserveScroll: true,
                 });
             },
         });
@@ -617,15 +615,17 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                         <SecondaryButton onClick={() => setShowDeleteModal(null)} className="flex-1">
                                             Batal
                                         </SecondaryButton>
-                                        <PrimaryButton
+                                        <button
+                                            type="button"
                                             onClick={() => handleDeleteChat(showDeleteModal)}
-                                            className="flex-1"
+                                            className="flex-1 rounded-full px-6 py-4 text-sm font-medium text-white shadow-[0_12px_28px_rgba(185,28,28,0.28)] transition-transform hover:-translate-y-0.5"
                                             style={{
                                                 background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                                                border: '1px solid rgba(255,255,255,0.16)',
                                             }}
                                         >
                                             Hapus
-                                        </PrimaryButton>
+                                        </button>
                                     </div>
                                 </div>
                             </LiquidGlassCard>

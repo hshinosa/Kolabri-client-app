@@ -1,8 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEvent } from 'react';
+import { FormEvent, ReactNode } from 'react';
+
 import { InputError } from '@/components/ui/input-error';
 import GuestLayout, { useTheme } from '@/layouts/guest-layout';
-import auth from '@/routes/auth';
 import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { CustomCheckbox } from '@/components/ui/CustomCheckbox';
@@ -147,4 +147,4 @@ export default function Login() {
 }
 
 // We need to wrap it in a parent so useTheme works (GuestLayout must be the parent of the provider)
-Login.layout = (page: any) => <GuestLayout>{page}</GuestLayout>;
+Login.layout = (page: ReactNode) => <GuestLayout>{page}</GuestLayout>;

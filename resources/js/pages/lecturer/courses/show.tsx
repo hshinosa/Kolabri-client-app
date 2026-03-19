@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import {
     AlertTriangle,
@@ -473,7 +473,7 @@ export default function ShowCourse({ course }: Props) {
                                         }}
                                     />
                                     <style>{`input[type="file"]::file-selector-button { background: rgba(136,22,28,0.10); color: #88161c; }`}</style>
-                                    <InputError message={errors.files || errors.file} />
+                                    <InputError message={errors.files} />
                                 </div>
 
                                 {data.files.length > 0 && (

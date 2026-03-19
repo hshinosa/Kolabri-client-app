@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, LearningGoal } from '@/types';
 import student from '@/routes/student';
-import { LiquidGlassCard, PrimaryButton, OrganicBlob } from '@/components/Welcome/utils/helpers';
+import { LiquidGlassCard, OrganicBlob } from '@/components/Welcome/utils/helpers';
 
 interface Group {
     id: string;
@@ -22,7 +22,7 @@ interface Props {
     hasGoal: boolean;
 }
 
-export default function StudentCourseShow({ course, group, goal, hasGroup, hasGoal }: Props) {
+export default function StudentCourseShow({ course, group, hasGroup }: Props) {
     const navItems = useStudentNav('course-detail', { courseId: course.id });
 
     return (

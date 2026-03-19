@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PropsWithChildren, useState } from 'react';
-import { BookOpen, LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 
 import { SharedData } from '@/types';
 import auth from '@/routes/auth';
@@ -35,6 +35,7 @@ export default function AppLayout({ children, title, navItems = [] }: AppLayoutP
     });
 
     const user = authData?.user;
+    void title;
 
     const toggleExpanded = (itemName: string) => {
         setExpandedItems(prev => 

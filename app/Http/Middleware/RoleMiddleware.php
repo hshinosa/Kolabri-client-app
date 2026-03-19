@@ -30,7 +30,7 @@ class RoleMiddleware
                 return redirect()->route('student.courses.index');
             }
 
-            return redirect()->route('auth.login');
+            return redirect()->route('auth.login.index');
         }
 
         return $next($request);

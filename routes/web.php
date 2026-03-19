@@ -28,9 +28,9 @@ Route::get('/', function () {
 */
 
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login');
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login.index');
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login.post');
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('auth.register');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('auth.register.index');
     Route::post('/register', [AuthController::class, 'register'])->name('auth.register.post');
 });
 
@@ -104,7 +104,7 @@ Route::middleware('auth.jwt')->group(function () {
         Route::get('/courses/{course}/chat-spaces', [CourseController::class, 'chatSpaces'])->name('courses.chat-spaces');
         
         // Chat (specific chat space)
-        Route::get('/courses/{course}/chat', [CourseController::class, 'chat'])->name('courses.chat');
+        Route::get('/courses/{course}/chat', [CourseController::class, 'chat'])->name('courses.chat.index');
         Route::get('/courses/{course}/chat/{chatSpace}', [CourseController::class, 'chatRoom'])->name('courses.chat.room');
 
         // Reflections

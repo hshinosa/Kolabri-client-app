@@ -1,8 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEvent } from 'react';
+import { FormEvent, ReactNode } from 'react';
+
 import { InputError } from '@/components/ui/input-error';
 import GuestLayout, { useTheme } from '@/layouts/guest-layout';
-import auth from '@/routes/auth';
 import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
@@ -222,4 +222,4 @@ export default function Register() {
 }
 
 // Wrap in layout to inject Context
-Register.layout = (page: any) => <GuestLayout>{page}</GuestLayout>;
+Register.layout = (page: ReactNode) => <GuestLayout>{page}</GuestLayout>;

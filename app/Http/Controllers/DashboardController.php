@@ -17,7 +17,7 @@ class DashboardController extends Controller
         $user = session('user');
 
         if (!$user) {
-            return redirect()->route('auth.login');
+            return redirect()->route('auth.login.index');
         }
 
         // Render role-specific dashboard

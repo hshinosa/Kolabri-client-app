@@ -72,12 +72,6 @@ const warningChipStyle = {
     border: '1px solid rgba(245,158,11,0.16)',
 } as const;
 
-const dangerChipStyle = {
-    background: 'rgba(239,68,68,0.10)',
-    color: '#b91c1c',
-    border: '1px solid rgba(239,68,68,0.16)',
-} as const;
-
 const glassPanelStyle = {
     background: 'rgba(255,255,255,0.55)',
     border: '1px solid rgba(255,255,255,0.65)',

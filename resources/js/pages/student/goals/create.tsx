@@ -10,7 +10,7 @@ import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, Group } from '@/types';
 import student from '@/routes/student';
 import { room as chatRoom } from '@/routes/student/courses/chat';
-import { LiquidGlassCard, PrimaryButton, SecondaryButton, OrganicBlob } from '@/components/Welcome/utils/helpers';
+import { LiquidGlassCard, OrganicBlob } from '@/components/Welcome/utils/helpers';
 
 interface ChatSpace {
     id: string;

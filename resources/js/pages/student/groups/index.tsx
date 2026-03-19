@@ -41,7 +41,7 @@ const headingStyle = {
 
 const bodyTextClass = 'text-sm text-[#6B7280]';
 
-export default function StudentGroupsIndex({ course, groups, myGroup, students }: Props) {
+export default function StudentGroupsIndex({ course, groups, myGroup }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
 
