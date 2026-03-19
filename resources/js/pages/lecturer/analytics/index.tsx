@@ -1,11 +1,23 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { useState, useEffect, useCallback } from 'react';
+import {
+    Activity,
+    AlertTriangle,
+    ArrowRight,
+    BarChart3,
+    MessageSquare,
+    RefreshCw,
+    Sparkles,
+    Users,
+} from 'lucide-react';
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+import { LiquidGlassCard, OrganicBlob, SecondaryButton } from '@/components/Welcome/utils/helpers';
+import { useLecturerNav } from '@/components/navigation/lecturer-nav';
 import AppLayout from '@/layouts/app-layout';
-import { Course, SharedData } from '@/types';
 import lecturer from '@/routes/lecturer';
+import { Course, SharedData } from '@/types';
 
 interface GroupAnalytics {
     groupId: string;
@@ -34,21 +46,53 @@ interface Props {
     };
 }
 
-const getQualityColor = (score?: number) => {
-    if (score === undefined) return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
-    if (score >= 70) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-    if (score >= 50) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-};
+const headingStyle = {
+    color: '#4A4A4A',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+} as const;
 
-const getStatusLabel = (score?: number) => {
-    if (score === undefined) return 'Belum Ada Data';
-    if (score >= 70) return 'Baik';
-    if (score >= 50) return 'Perlu Perhatian';
-    return 'Butuh Intervensi';
-};
+const bodyTextClass = 'text-sm text-[#6B7280]';
 
-// Default values for analytics
+const brandChipStyle = {
+    background: 'rgba(136,22,28,0.08)',
+    color: '#88161c',
+    border: '1px solid rgba(136,22,28,0.15)',
+} as const;
+
+const neutralChipStyle = {
+    background: 'rgba(74,74,74,0.08)',
+    color: '#4A4A4A',
+    border: '1px solid rgba(74,74,74,0.12)',
+} as const;
+
+const warningChipStyle = {
+    background: 'rgba(245,158,11,0.10)',
+    color: '#92400e',
+    border: '1px solid rgba(245,158,11,0.18)',
+} as const;
+
+const dangerChipStyle = {
+    background: 'rgba(239,68,68,0.10)',
+    color: '#b91c1c',
+    border: '1px solid rgba(239,68,68,0.18)',
+} as const;
+
+const successChipStyle = {
+    background: 'rgba(34,197,94,0.10)',
+    color: '#166534',
+    border: '1px solid rgba(34,197,94,0.18)',
+} as const;
+
+const glassPanelStyle = {
+    background: 'rgba(255,255,255,0.55)',
+    border: '1px solid rgba(255,255,255,0.65)',
+} as const;
+
+const tableHeaderStyle = {
+    background: 'rgba(255,255,255,0.58)',
+    borderBottom: '1px solid rgba(255,255,255,0.72)',
+} as const;
+
 const defaultSummary: CourseAnalyticsSummary = {
     totalGroups: 0,
     totalMessages: 0,
@@ -56,51 +100,81 @@ const defaultSummary: CourseAnalyticsSummary = {
     groupsNeedingAttention: 0,
 };
 
+const getQualityChipStyle = (score?: number | null): CSSProperties => {
+    if (score === undefined || score === null) return neutralChipStyle;
+    if (score >= 70) return successChipStyle;
+    if (score >= 50) return warningChipStyle;
+    return dangerChipStyle;
+};
+
+const getQualityAccent = (score?: number | null) => {
+    if (score === undefined || score === null) return '#6B7280';
+    if (score >= 70) return '#166534';
+    if (score >= 50) return '#92400e';
+    return '#b91c1c';
+};
+
+const getStatusLabel = (score?: number | null) => {
+    if (score === undefined || score === null) return 'Belum Ada Data';
+    if (score >= 70) return 'Baik';
+    if (score >= 50) return 'Perlu Perhatian';
+    return 'Butuh Intervensi';
+};
+
+const getEngagementStyle = (type: string) => {
+    const key = type.toLowerCase();
+
+    if (key.includes('cognitive')) {
+        return {
+            chip: {
+                background: 'rgba(59,130,246,0.10)',
+                color: '#1d4ed8',
+                border: '1px solid rgba(59,130,246,0.16)',
+            } satisfies CSSProperties,
+            bar: '#3b82f6',
+        };
+    }
+
+    if (key.includes('behavioral')) {
+        return {
+            chip: successChipStyle,
+            bar: '#22c55e',
+        };
+    }
+
+    return {
+        chip: {
+            background: 'rgba(168,85,247,0.10)',
+            color: '#7e22ce',
+            border: '1px solid rgba(168,85,247,0.16)',
+        } satisfies CSSProperties,
+        bar: '#a855f7',
+    };
+};
+
 export default function CourseAnalytics({ course, analytics }: Props) {
     const { auth } = usePage<SharedData>().props;
-    
-    // Extract summary and groups with defaults
     const summary = analytics?.summary ?? defaultSummary;
     const groups = analytics?.groups ?? [];
-    
+
     const [liveGroups, setLiveGroups] = useState<GroupAnalytics[]>(groups);
-    const [alerts, setAlerts] = useState<Array<{
-        type: string;
-        groupId: string;
-        qualityScore?: number;
-        message: string;
-        timestamp: string;
-    }>>([]);
+    const [alerts, setAlerts] = useState<
+        Array<{
+            type: string;
+            groupId: string;
+            qualityScore?: number;
+            message: string;
+            timestamp: string;
+        }>
+    >([]);
     const [isConnected, setIsConnected] = useState(false);
 
-    // Update liveGroups when props change
     useEffect(() => {
         setLiveGroups(groups);
     }, [groups]);
 
-    const navItems = [
-        {
-            name: 'Kelas Saya',
-            href: lecturer.courses.index.url(),
-            icon: (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-        },
-        {
-            name: 'Analytics',
-            href: '#',
-            icon: (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            ),
-            active: true,
-        },
-    ];
+    const navItems = useLecturerNav('analytics', { courseId: course.id });
 
-    // Connect to real-time updates
     useEffect(() => {
         if (!auth.token) return;
 
@@ -119,18 +193,15 @@ export default function CourseAnalytics({ course, analytics }: Props) {
             setIsConnected(false);
         });
 
-        // Listen for lecturer alerts
         socket.on('lecturer_alert', (data) => {
             if (data.courseId === course.id) {
                 setAlerts((prev) => [data, ...prev].slice(0, 10));
-                
-                // Update group quality score in live data
                 setLiveGroups((prev) =>
-                    prev.map((g) =>
-                        g.groupId === data.groupId
-                            ? { ...g, qualityScore: data.qualityScore, needsAttention: true }
-                            : g
-                    )
+                    prev.map((group) =>
+                        group.groupId === data.groupId
+                            ? { ...group, qualityScore: data.qualityScore, needsAttention: true }
+                            : group,
+                    ),
                 );
             }
         });
@@ -141,7 +212,7 @@ export default function CourseAnalytics({ course, analytics }: Props) {
     }, [auth.token, course.id]);
 
     const dismissAlert = (index: number) => {
-        setAlerts((prev) => prev.filter((_, i) => i !== index));
+        setAlerts((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
     };
 
     const refreshAnalytics = useCallback(async () => {
@@ -152,6 +223,7 @@ export default function CourseAnalytics({ course, analytics }: Props) {
                     Authorization: `Bearer ${auth.token}`,
                 },
             });
+
             if (response.ok) {
                 const data = await response.json();
                 setLiveGroups(data.groups);
@@ -161,318 +233,494 @@ export default function CourseAnalytics({ course, analytics }: Props) {
         }
     }, [course.id, auth.token]);
 
+    const liveSummary = useMemo(() => {
+        const qualityScores = liveGroups
+            .map((group) => group.qualityScore)
+            .filter((score): score is number => score !== undefined && score !== null);
+
+        return {
+            totalGroups: summary.totalGroups || liveGroups.length,
+            totalMessages: summary.totalMessages,
+            averageQualityScore:
+                qualityScores.length > 0
+                    ? qualityScores.reduce((total, score) => total + score, 0) / qualityScores.length
+                    : summary.averageQualityScore,
+            groupsNeedingAttention:
+                liveGroups.filter((group) => group.needsAttention || ((group.qualityScore ?? 100) < 50)).length ||
+                summary.groupsNeedingAttention,
+        };
+    }, [liveGroups, summary]);
+
+    const summaryCards = [
+        {
+            label: 'Total Grup',
+            value: liveSummary.totalGroups,
+            detail: 'Tim kolaborasi yang sedang termonitor',
+            icon: Users,
+            color: '#88161c',
+        },
+        {
+            label: 'Total Pesan',
+            value: liveSummary.totalMessages,
+            detail: 'Akumulasi diskusi dari seluruh grup',
+            icon: MessageSquare,
+            color: '#4A4A4A',
+        },
+        {
+            label: 'Rata-rata Kualitas',
+            value:
+                liveSummary.averageQualityScore === null || liveSummary.averageQualityScore === undefined
+                    ? '—'
+                    : liveSummary.averageQualityScore.toFixed(1),
+            detail: getStatusLabel(liveSummary.averageQualityScore),
+            icon: BarChart3,
+            color: getQualityAccent(liveSummary.averageQualityScore),
+        },
+        {
+            label: 'Perlu Perhatian',
+            value: liveSummary.groupsNeedingAttention,
+            detail:
+                liveSummary.groupsNeedingAttention > 0
+                    ? 'Butuh tindak lanjut pengajar'
+                    : 'Seluruh grup berada di jalur aman',
+            icon: AlertTriangle,
+            color: liveSummary.groupsNeedingAttention > 0 ? '#b91c1c' : '#166534',
+        },
+    ];
+
+    const groupsWithEngagement = liveGroups.filter(
+        (group) => group.engagementDistribution && Object.keys(group.engagementDistribution).length > 0,
+    );
+
     return (
         <AppLayout title={`Analytics - ${course.name}`} navItems={navItems}>
             <Head title={`Analytics - ${course.name}`} />
 
-            <div className="space-y-6">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                    <div>
-                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                            Analytics Dashboard
-                        </h1>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            {course.code} - {course.name}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                            isConnected
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                        }`}>
-                            <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-zinc-400'}`} />
-                            {isConnected ? 'Live' : 'Offline'}
-                        </span>
-                        <button
-                            onClick={refreshAnalytics}
-                            className="btn-secondary flex items-center gap-2"
-                        >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            Refresh
-                        </button>
-                    </div>
-                </motion.div>
+            <div className="relative">
+                <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={320} />
+                <OrganicBlob className="top-32 -right-12" delay={-5} color="rgba(136, 22, 28, 0.03)" size={260} />
 
-                {/* Alerts */}
-                {alerts.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="space-y-2"
-                    >
-                        {alerts.map((alert, index) => (
-                            <motion.div
-                                key={`${alert.groupId}-${alert.timestamp}`}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                                            {alert.message}
-                                        </p>
-                                        <p className="text-xs text-red-600 dark:text-red-400">
-                                            Skor: {alert.qualityScore?.toFixed(1) || '-'} • {new Date(alert.timestamp).toLocaleTimeString()}
-                                        </p>
+                <div className="relative space-y-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <LiquidGlassCard intensity="medium" className="p-6 sm:p-8" lightMode={true}>
+                            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                                <div className="max-w-3xl">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" style={brandChipStyle}>
+                                            {course.code}
+                                        </span>
+                                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" style={neutralChipStyle}>
+                                            {liveGroups.length} grup termonitor
+                                        </span>
+                                        <span
+                                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                            style={isConnected ? successChipStyle : neutralChipStyle}
+                                        >
+                                            <Activity className="h-3.5 w-3.5" />
+                                            {isConnected ? 'Live analytics aktif' : 'Menunggu koneksi live'}
+                                        </span>
                                     </div>
+
+                                    <h1 className="mt-3 text-2xl font-bold sm:text-3xl" style={headingStyle}>
+                                        Monitoring kualitas diskusi lintas grup
+                                    </h1>
+                                    <p className={`mt-2 max-w-2xl ${bodyTextClass}`}>
+                                        Lihat kesehatan percakapan, sinyal SSRL, dan grup yang butuh intervensi tanpa mengubah
+                                        alur refresh, socket alert, atau detail analytics yang sudah berjalan.
+                                    </p>
                                 </div>
-                                <button
-                                    onClick={() => dismissAlert(index)}
-                                    className="rounded p-1 text-red-400 hover:bg-red-100 dark:hover:bg-red-800/30"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+
+                                <div className="grid gap-3 sm:grid-cols-2 xl:w-[360px] xl:grid-cols-1">
+                                    <div className="rounded-[28px] p-4" style={glassPanelStyle}>
+                                        <p className="text-xs uppercase tracking-[0.2em] text-[#6B7280]">Perlu perhatian</p>
+                                        <p className="mt-2 text-2xl font-semibold" style={headingStyle}>
+                                            {liveSummary.groupsNeedingAttention}
+                                        </p>
+                                        <p className="mt-1 text-xs text-[#6B7280]">Grup dengan skor rendah atau alert aktif.</p>
+                                    </div>
+
+                                    <SecondaryButton onClick={refreshAnalytics} className="justify-center">
+                                        <RefreshCw className="h-4 w-4" />
+                                        Refresh analytics
+                                    </SecondaryButton>
+                                </div>
+                            </div>
+                        </LiquidGlassCard>
+                    </motion.div>
+
+                    {alerts.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.08 }}
+                        >
+                            <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                                style={{
+                                                    background: 'rgba(239,68,68,0.10)',
+                                                    border: '1px solid rgba(239,68,68,0.18)',
+                                                }}
+                                            >
+                                                <AlertTriangle className="h-5 w-5" style={{ color: '#b91c1c' }} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                    Alert kualitas terbaru
+                                                </h2>
+                                                <p className={`mt-1 ${bodyTextClass}`}>
+                                                    Notifikasi dari socket dosen ditampilkan real-time dan tetap bisa ditutup satu per satu.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span className="rounded-full px-3 py-1 text-xs font-medium" style={dangerChipStyle}>
+                                        {alerts.length} alert aktif
+                                    </span>
+                                </div>
+
+                                <div className="mt-5 space-y-3">
+                                    {alerts.map((alert, index) => (
+                                        <div
+                                            key={`${alert.groupId}-${alert.timestamp}`}
+                                            className="flex flex-col gap-3 rounded-[24px] p-4 sm:flex-row sm:items-center sm:justify-between"
+                                            style={{
+                                                background: 'rgba(239,68,68,0.08)',
+                                                border: '1px solid rgba(239,68,68,0.12)',
+                                            }}
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-[#7f1d1d]">{alert.message}</p>
+                                                <p className="mt-1 text-xs text-[#b91c1c]">
+                                                    Skor {alert.qualityScore?.toFixed(1) || '—'} •{' '}
+                                                    {new Date(alert.timestamp).toLocaleTimeString('id-ID', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    })}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => dismissAlert(index)}
+                                                className="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+                                                style={glassPanelStyle}
+                                            >
+                                                Tutup
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.div>
+                    )}
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {summaryCards.map((card, index) => (
+                            <motion.div
+                                key={card.label}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.08 * (index + 1) }}
+                            >
+                                <LiquidGlassCard intensity="light" className="p-5" lightMode={true}>
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm text-[#6B7280]">{card.label}</p>
+                                            <p className="mt-2 text-3xl font-light" style={headingStyle}>
+                                                {card.value}
+                                            </p>
+                                            <p className="mt-1 text-xs text-[#6B7280]">{card.detail}</p>
+                                        </div>
+                                        <div
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: `${card.color}12`,
+                                                border: `1px solid ${card.color}20`,
+                                            }}
+                                        >
+                                            <card.icon className="h-5 w-5" style={{ color: card.color }} />
+                                        </div>
+                                    </div>
+                                </LiquidGlassCard>
                             </motion.div>
                         ))}
-                    </motion.div>
-                )}
-
-                {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="card p-5"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                                <svg className="h-5 w-5 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-sm text-zinc-500">Total Grup</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {summary.totalGroups}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                        className="card p-5"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-sm text-zinc-500">Total Pesan</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {summary.totalMessages}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="card p-5"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${getQualityColor(summary.averageQualityScore ?? undefined)}`}>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-sm text-zinc-500">Rata-rata Kualitas</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {summary.averageQualityScore?.toFixed(1) || '-'}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="card p-5"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                                summary.groupsNeedingAttention > 0
-                                    ? 'bg-red-100 dark:bg-red-900/30'
-                                    : 'bg-green-100 dark:bg-green-900/30'
-                            }`}>
-                                <svg className={`h-5 w-5 ${
-                                    summary.groupsNeedingAttention > 0
-                                        ? 'text-red-600 dark:text-red-400'
-                                        : 'text-green-600 dark:text-green-400'
-                                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-sm text-zinc-500">Perlu Perhatian</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {summary.groupsNeedingAttention}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Groups Table */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="card overflow-hidden"
-                >
-                    <div className="border-b border-zinc-200 p-4 dark:border-zinc-700">
-                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                            Analisis Grup
-                        </h2>
-                        <p className="text-sm text-zinc-500">
-                            Monitor kualitas diskusi dan engagement setiap grup
-                        </p>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Grup
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Anggota
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Pesan
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Skor Kualitas
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Status
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-zinc-500">
-                                        Aksi
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
-                                {liveGroups.map((group) => (
-                                    <tr key={group.groupId} className={`${
-                                        group.needsAttention ? 'bg-red-50/50 dark:bg-red-900/10' : ''
-                                    }`}>
-                                        <td className="whitespace-nowrap px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-sm font-bold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                                                    {group.groupName.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                                        {group.groupName}
-                                                    </p>
-                                                    <p className="text-xs text-zinc-500">
-                                                        {group.chatSpaceCount} sesi diskusi
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                                            {group.memberCount}
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-                                            {group.messageCount}
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-center">
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getQualityColor(group.qualityScore)}`}>
-                                                {group.qualityScore?.toFixed(1) || '-'}
-                                            </span>
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-center">
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getQualityColor(group.qualityScore)}`}>
-                                                {getStatusLabel(group.qualityScore)}
-                                            </span>
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-4 text-right">
-                                            <Link
-                                                href={lecturer.analytics.group.url({ course: course.id, group: group.groupId })}
-                                                className="text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                                            >
-                                                Detail →
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.div>
 
-                {/* Engagement Distribution */}
-                {liveGroups.some((g) => g.engagementDistribution) && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="card p-6"
+                        transition={{ delay: 0.22 }}
                     >
-                        <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                            Distribusi Engagement
-                        </h3>
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            {liveGroups
-                                .filter((g) => g.engagementDistribution)
-                                .map((group) => (
-                                    <div key={group.groupId} className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-                                        <p className="mb-3 font-medium text-zinc-900 dark:text-zinc-100">
-                                            {group.groupName}
-                                        </p>
-                                        <div className="space-y-2">
-                                            {Object.entries(group.engagementDistribution || {}).map(([type, count]) => (
-                                                <div key={type} className="flex items-center justify-between">
-                                                    <span className={`text-sm ${
-                                                        type === 'Cognitive'
-                                                            ? 'text-blue-600 dark:text-blue-400'
-                                                            : type === 'Behavioral'
-                                                            ? 'text-green-600 dark:text-green-400'
-                                                            : 'text-purple-600 dark:text-purple-400'
-                                                    }`}>
-                                                        {type}
-                                                    </span>
-                                                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                                        {count}
-                                                    </span>
-                                                </div>
-                                            ))}
+                        <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: 'rgba(136,22,28,0.08)',
+                                                border: '1px solid rgba(136,22,28,0.12)',
+                                            }}
+                                        >
+                                            <Sparkles className="h-5 w-5" style={{ color: '#88161c' }} />
                                         </div>
-                                        {group.recommendation && (
-                                            <p className="mt-3 text-xs text-zinc-500">
-                                                💡 {group.recommendation}
+                                        <div>
+                                            <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                Analisis grup per tim
+                                            </h2>
+                                            <p className={`mt-1 ${bodyTextClass}`}>
+                                                Tabel analytics mempertahankan tautan detail, status kualitas, dan konteks diskusi untuk setiap grup.
                                             </p>
-                                        )}
+                                        </div>
                                     </div>
-                                ))}
-                        </div>
+                                </div>
+
+                                <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                    {liveGroups.length} baris data
+                                </span>
+                            </div>
+
+                            <div className="mt-5 overflow-hidden rounded-[28px]" style={glassPanelStyle}>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full border-separate border-spacing-0">
+                                        <thead style={tableHeaderStyle}>
+                                            <tr>
+                                                {['Grup', 'Anggota', 'Pesan', 'Skor kualitas', 'Status', 'Aksi'].map((label) => (
+                                                    <th
+                                                        key={label}
+                                                        className={`px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280] ${
+                                                            label === 'Aksi' ? 'text-right' : label === 'Grup' ? 'text-left' : 'text-center'
+                                                        }`}
+                                                    >
+                                                        {label}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {liveGroups.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-14 text-center">
+                                                        <div
+                                                            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                                                            style={{
+                                                                background: 'rgba(136,22,28,0.08)',
+                                                                border: '1px solid rgba(136,22,28,0.12)',
+                                                            }}
+                                                        >
+                                                            <BarChart3 className="h-6 w-6" style={{ color: '#88161c' }} />
+                                                        </div>
+                                                        <p className="mt-4 text-base font-semibold" style={headingStyle}>
+                                                            Belum ada data analytics grup
+                                                        </p>
+                                                        <p className={`mx-auto mt-2 max-w-md ${bodyTextClass}`}>
+                                                            Begitu grup mulai berdiskusi, ringkasan kualitas dan engagement akan muncul di sini.
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                liveGroups.map((group) => {
+                                                    const rowStyle: CSSProperties | undefined = group.needsAttention
+                                                        ? {
+                                                              background: 'rgba(245,158,11,0.08)',
+                                                          }
+                                                        : undefined;
+
+                                                    return (
+                                                        <tr key={group.groupId} style={rowStyle}>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-left align-top">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span
+                                                                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-semibold"
+                                                                        style={brandChipStyle}
+                                                                    >
+                                                                        {group.groupName.charAt(0).toUpperCase()}
+                                                                    </span>
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-semibold" style={headingStyle}>
+                                                                            {group.groupName}
+                                                                        </p>
+                                                                        <p className="mt-1 text-xs text-[#6B7280]">
+                                                                            {group.chatSpaceCount} sesi diskusi
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-center align-top text-sm text-[#4A4A4A]">
+                                                                {group.memberCount}
+                                                            </td>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-center align-top text-sm text-[#4A4A4A]">
+                                                                {group.messageCount}
+                                                            </td>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-center align-top">
+                                                                <span
+                                                                    className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                                                                    style={getQualityChipStyle(group.qualityScore)}
+                                                                >
+                                                                    {group.qualityScore?.toFixed(1) || '—'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-center align-top">
+                                                                <div className="inline-flex flex-col items-center gap-2">
+                                                                    <span
+                                                                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                                                                        style={getQualityChipStyle(group.qualityScore)}
+                                                                    >
+                                                                        {getStatusLabel(group.qualityScore)}
+                                                                    </span>
+                                                                    {group.needsAttention && (
+                                                                        <span className="text-[11px] font-medium text-[#92400e]">Alert aktif</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="border-t border-white/50 px-4 py-4 text-right align-top">
+                                                                <Link
+                                                                    href={lecturer.analytics.group.url({
+                                                                        course: course.id,
+                                                                        group: group.groupId,
+                                                                    })}
+                                                                    className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-transform hover:-translate-y-0.5"
+                                                                    style={glassPanelStyle}
+                                                                >
+                                                                    Detail
+                                                                    <ArrowRight className="h-4 w-4" />
+                                                                </Link>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </LiquidGlassCard>
                     </motion.div>
-                )}
+
+                    {groupsWithEngagement.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                        >
+                            <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                                style={{
+                                                    background: 'rgba(59,130,246,0.10)',
+                                                    border: '1px solid rgba(59,130,246,0.16)',
+                                                }}
+                                            >
+                                                <Activity className="h-5 w-5" style={{ color: '#1d4ed8' }} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                    Distribusi engagement dan rekomendasi
+                                                </h2>
+                                                <p className={`mt-1 ${bodyTextClass}`}>
+                                                    Tiap kartu memperlihatkan distribusi sinyal keterlibatan dan catatan intervensi yang sudah tersedia.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                        {groupsWithEngagement.length} grup dengan data SSRL
+                                    </span>
+                                </div>
+
+                                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                                    {groupsWithEngagement.map((group) => {
+                                        const total = Object.values(group.engagementDistribution || {}).reduce(
+                                            (sum, value) => sum + value,
+                                            0,
+                                        );
+
+                                        return (
+                                            <div key={group.groupId} className="rounded-[28px] p-5" style={glassPanelStyle}>
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="rounded-full px-3 py-1 text-xs font-medium" style={brandChipStyle}>
+                                                                {group.groupName}
+                                                            </span>
+                                                            <span
+                                                                className="rounded-full px-3 py-1 text-xs font-medium"
+                                                                style={getQualityChipStyle(group.qualityScore)}
+                                                            >
+                                                                {getStatusLabel(group.qualityScore)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-3 text-sm font-medium" style={headingStyle}>
+                                                            Peta distribusi percakapan
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-[#6B7280]">
+                                                            {total} indikator engagement terklasifikasi dari percakapan grup.
+                                                        </p>
+                                                    </div>
+                                                    <Link
+                                                        href={lecturer.analytics.group.url({ course: course.id, group: group.groupId })}
+                                                        className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-transform hover:-translate-y-0.5"
+                                                        style={glassPanelStyle}
+                                                    >
+                                                        Buka detail
+                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                    </Link>
+                                                </div>
+
+                                                <div className="mt-4 space-y-3">
+                                                    {Object.entries(group.engagementDistribution || {}).map(([type, count]) => {
+                                                        const percentage = total > 0 ? (count / total) * 100 : 0;
+                                                        const engagementStyle = getEngagementStyle(type);
+
+                                                        return (
+                                                            <div key={type} className="space-y-2 rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.48)' }}>
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <span
+                                                                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize"
+                                                                        style={engagementStyle.chip}
+                                                                    >
+                                                                        {type}
+                                                                    </span>
+                                                                    <span className="text-sm font-medium text-[#4A4A4A]">
+                                                                        {count} • {percentage.toFixed(0)}%
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-2 overflow-hidden rounded-full bg-white/70">
+                                                                    <div
+                                                                        className="h-full rounded-full transition-all duration-500"
+                                                                        style={{ width: `${percentage}%`, background: engagementStyle.bar }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {group.recommendation && (
+                                                    <div className="mt-4 rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.45)' }}>
+                                                        <div className="flex items-start gap-3">
+                                                            <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: '#88161c' }} />
+                                                            <p className="text-sm leading-6 text-[#6B7280]">{group.recommendation}</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.div>
+                    )}
+                </div>
             </div>
         </AppLayout>
     );

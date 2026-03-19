@@ -1,78 +1,75 @@
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
+import { BookOpen, Plus, Users } from 'lucide-react';
 
+import { useLecturerNav } from '@/components/navigation/lecturer-nav';
+import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
 import AppLayout from '@/layouts/app-layout';
-import { Course } from '@/types';
 import lecturer from '@/routes/lecturer';
+import { Course } from '@/types';
 
 interface Props {
     courses: Course[];
 }
 
-const navItems = [
-    {
-        name: 'Kelas Saya',
-        href: lecturer.courses.index.url(),
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-        ),
-        active: true,
-    },
-    {
-        name: 'Buat Kelas',
-        href: lecturer.courses.create.url(),
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-        ),
-    },
-];
-
 export default function LecturerCoursesIndex({ courses }: Props) {
+    const navItems = useLecturerNav('courses');
+
     return (
         <AppLayout title="Kelas Saya" navItems={navItems}>
             <Head title="Kelas Saya" />
 
             <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                            Kelas Saya
-                        </h2>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Kelola kelas dan grup siswa Anda
-                        </p>
+                <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <h2
+                                className="text-2xl font-bold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Kelas Saya
+                            </h2>
+                            <p className="mt-1 text-sm text-[#6B7280]">Kelola kelas dan grup siswa Anda</p>
+                        </div>
+                        <PrimaryButton href={lecturer.courses.create.url()}>
+                            <Plus className="h-4 w-4" />
+                            Buat Kelas
+                        </PrimaryButton>
                     </div>
-                    <Link href={lecturer.courses.create.url()} className="btn-primary">
-                        Buat Kelas
-                    </Link>
-                </div>
+                </LiquidGlassCard>
 
-                {/* Course Grid */}
                 {courses.length === 0 ? (
                     <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="card flex flex-col items-center justify-center py-16 text-center"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
                     >
-                        <div className="mb-4 rounded-full bg-zinc-100 p-4 dark:bg-zinc-800">
-                            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-                            Belum ada kelas
-                        </h3>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Buat kelas pertama Anda untuk memulai
-                        </p>
-                        <Link href={lecturer.courses.create.url()} className="btn-primary mt-4">
-                            Buat Kelas
-                        </Link>
+                        <LiquidGlassCard intensity="medium" className="flex flex-col items-center justify-center py-16 text-center" lightMode={true}>
+                            <div
+                                className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+                                style={{
+                                    background: 'rgba(136,22,28,0.08)',
+                                    border: '1px solid rgba(136,22,28,0.12)',
+                                }}
+                            >
+                                <BookOpen className="h-8 w-8" style={{ color: '#88161c' }} />
+                            </div>
+                            <h3
+                                className="text-lg font-semibold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Belum ada kelas
+                            </h3>
+                            <p className="mt-2 max-w-sm text-sm text-[#6B7280]">
+                                Buat kelas pertama Anda untuk mulai mengelola pembelajaran dan kolaborasi mahasiswa.
+                            </p>
+                            <div className="mt-6">
+                                <PrimaryButton href={lecturer.courses.create.url()}>
+                                    <Plus className="h-4 w-4" />
+                                    Buat Kelas
+                                </PrimaryButton>
+                            </div>
+                        </LiquidGlassCard>
                     </motion.div>
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -81,35 +78,55 @@ export default function LecturerCoursesIndex({ courses }: Props) {
                                 key={course.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
+                                transition={{ delay: index * 0.1, duration: 0.5 }}
                             >
-                                <Link
-                                    href={lecturer.courses.show.url({ course: course.id })}
-                                    className="card block p-6 transition-shadow hover:shadow-md"
-                                >
-                                    <div className="mb-4 flex items-center justify-between">
-                                        <span className="inline-flex items-center rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
-                                            {course.code}
-                                        </span>
-                                        <span className="text-xs text-zinc-500">
-                                            {course.students_count || 0} siswa
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {course.name}
-                                    </h3>
-                                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                                        Dosen: {course.owner?.name || 'Tidak Diketahui'}
-                                    </p>
-                                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                        {course.groups_count || 0} grup
-                                    </p>
-                                    <div className="mt-4 flex items-center text-sm text-primary-600 dark:text-primary-400">
-                                        Lihat Detail
-                                        <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </div>
+                                <Link href={lecturer.courses.show.url({ course: course.id })} className="group block">
+                                    <LiquidGlassCard
+                                        intensity="light"
+                                        className="p-6 transition-all duration-300 group-hover:shadow-lg"
+                                        lightMode={true}
+                                    >
+                                        <div className="mb-4 flex items-center justify-between gap-3">
+                                            <span
+                                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                                style={{
+                                                    background: 'rgba(136,22,28,0.08)',
+                                                    color: '#88161c',
+                                                    border: '1px solid rgba(136,22,28,0.15)',
+                                                }}
+                                            >
+                                                {course.code}
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 text-xs text-[#6B7280]">
+                                                <Users className="h-3.5 w-3.5" />
+                                                {course.students_count || 0} siswa
+                                            </span>
+                                        </div>
+
+                                        <h3
+                                            className="text-lg font-semibold"
+                                            style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                                        >
+                                            {course.name}
+                                        </h3>
+                                        <p className="mt-2 text-sm text-[#6B7280]">
+                                            Dosen: {course.owner?.name || 'Tidak Diketahui'}
+                                        </p>
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <p className="text-sm text-[#6B7280]">{course.groups_count || 0} grup</p>
+                                            <div className="flex items-center text-sm font-medium" style={{ color: '#88161c' }}>
+                                                Lihat Detail
+                                                <svg
+                                                    className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </LiquidGlassCard>
                                 </Link>
                             </motion.div>
                         ))}

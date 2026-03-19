@@ -1,12 +1,27 @@
 import { Head, useForm } from '@inertiajs/react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FormEvent, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    AlertTriangle,
+    Check,
+    Copy,
+    FolderKanban,
+    MessageSquare,
+    Plus,
+    Sparkles,
+    Trash2,
+    UserPlus,
+    Users,
+    X,
+} from 'lucide-react';
+import { CSSProperties, FormEvent, useMemo, useState } from 'react';
 
+import { useLecturerNav } from '@/components/navigation/lecturer-nav';
+import { LiquidGlassCard, OrganicBlob, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
 import { InputError } from '@/components/ui/input-error';
 import { InputLabel } from '@/components/ui/input-label';
 import AppLayout from '@/layouts/app-layout';
-import { Course, User } from '@/types';
 import lecturer from '@/routes/lecturer';
+import { Course, User } from '@/types';
 
 interface ChatSpace {
     id: string;
@@ -32,25 +47,65 @@ interface Props {
     students: User[];
 }
 
+const headingStyle = {
+    color: '#4A4A4A',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+} as const;
+
+const bodyTextClass = 'text-sm text-[#6B7280]';
+
+const brandChipStyle = {
+    background: 'rgba(136,22,28,0.08)',
+    color: '#88161c',
+    border: '1px solid rgba(136,22,28,0.15)',
+} as const;
+
+const neutralChipStyle = {
+    background: 'rgba(74,74,74,0.08)',
+    color: '#4A4A4A',
+    border: '1px solid rgba(74,74,74,0.12)',
+} as const;
+
+const warningChipStyle = {
+    background: 'rgba(245,158,11,0.10)',
+    color: '#92400e',
+    border: '1px solid rgba(245,158,11,0.16)',
+} as const;
+
+const dangerChipStyle = {
+    background: 'rgba(239,68,68,0.10)',
+    color: '#b91c1c',
+    border: '1px solid rgba(239,68,68,0.16)',
+} as const;
+
+const glassPanelStyle = {
+    background: 'rgba(255,255,255,0.55)',
+    border: '1px solid rgba(255,255,255,0.65)',
+} as const;
+
+const modalBackdropClass = 'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm';
+
+const getGoalChipStyle = (group: GroupWithDetails): CSSProperties => {
+    if (group.has_goal) {
+        return {
+            background: 'rgba(34,197,94,0.10)',
+            color: '#166534',
+            border: '1px solid rgba(34,197,94,0.18)',
+        };
+    }
+
+    return warningChipStyle;
+};
+
 export default function GroupsIndex({ course, groups, students }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState<string | null>(null);
     const [showChatSpaceModal, setShowChatSpaceModal] = useState<string | null>(null);
-    const [copiedCode, setCopiedCode] = useState(false);
+    const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const [selectedGroupJoinCode, setSelectedGroupJoinCode] = useState<string | null>(null);
     const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
 
-    const navItems = [
-        {
-            name: 'Kelas Saya',
-            href: lecturer.courses.index.url(),
-            icon: (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-        },
-    ];
+    const navItems = useLecturerNav('groups', { courseId: course.id });
 
     const createForm = useForm({
         name: '',
@@ -67,8 +122,8 @@ export default function GroupsIndex({ course, groups, students }: Props) {
 
     const deleteForm = useForm({});
 
-    const handleCreateGroup = (e: FormEvent) => {
-        e.preventDefault();
+    const handleCreateGroup = (event: FormEvent) => {
+        event.preventDefault();
         createForm.post(lecturer.groups.store.url({ course: course.id }), {
             onSuccess: () => {
                 setShowCreateModal(false);
@@ -77,34 +132,28 @@ export default function GroupsIndex({ course, groups, students }: Props) {
         });
     };
 
-    const handleAssignMembers = (e: FormEvent) => {
-        e.preventDefault();
+    const handleAssignMembers = (event: FormEvent) => {
+        event.preventDefault();
         if (!showAssignModal) return;
 
-        assignForm.post(
-            lecturer.groups.members.store.url({ course: course.id, group: showAssignModal }),
-            {
-                onSuccess: () => {
-                    setShowAssignModal(null);
-                    assignForm.reset();
-                },
+        assignForm.post(lecturer.groups.members.store.url({ course: course.id, group: showAssignModal }), {
+            onSuccess: () => {
+                setShowAssignModal(null);
+                assignForm.reset();
             },
-        );
+        });
     };
 
-    const handleCreateChatSpace = (e: FormEvent) => {
-        e.preventDefault();
+    const handleCreateChatSpace = (event: FormEvent) => {
+        event.preventDefault();
         if (!showChatSpaceModal) return;
 
-        chatSpaceForm.post(
-            `/lecturer/groups/${showChatSpaceModal}/chat-spaces`,
-            {
-                onSuccess: () => {
-                    setShowChatSpaceModal(null);
-                    chatSpaceForm.reset();
-                },
-            }
-        );
+        chatSpaceForm.post(`/lecturer/groups/${showChatSpaceModal}/chat-spaces`, {
+            onSuccess: () => {
+                setShowChatSpaceModal(null);
+                chatSpaceForm.reset();
+            },
+        });
     };
 
     const handleDeleteGroup = () => {
@@ -128,202 +177,384 @@ export default function GroupsIndex({ course, groups, students }: Props) {
 
     const copyJoinCode = (code: string) => {
         navigator.clipboard.writeText(code);
-        setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 2000);
+        setCopiedCode(code);
+        setTimeout(() => setCopiedCode(null), 2000);
     };
 
-    // Get unassigned students
-    const assignedStudentIds = groups.flatMap((g) => g.members?.map((m) => m.id) || []);
-    const unassignedStudents = students.filter((s) => !assignedStudentIds.includes(s.id));
+    const assignedStudentIds = useMemo(() => groups.flatMap((group) => group.members?.map((member) => member.id) || []), [groups]);
+    const unassignedStudents = useMemo(
+        () => students.filter((student) => !assignedStudentIds.includes(student.id)),
+        [assignedStudentIds, students],
+    );
+
+    const selectedGroup = useMemo(
+        () => groups.find((group) => group.id === showAssignModal) ?? null,
+        [groups, showAssignModal],
+    );
+
+    const deleteGroup = useMemo(
+        () => groups.find((group) => group.id === deleteGroupId) ?? null,
+        [deleteGroupId, groups],
+    );
+
+    const totalMembers = groups.reduce((sum, group) => sum + (group.members?.length || 0), 0);
+    const totalChatSpaces = groups.reduce((sum, group) => sum + (group.chatSpaces?.length || 0), 0);
+    const groupsWithGoals = groups.filter((group) => group.has_goal).length;
 
     return (
         <AppLayout title={`Grup - ${course.name}`} navItems={navItems}>
             <Head title={`Grup - ${course.name}`} />
 
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                            Grup
-                        </h2>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Kelola grup siswa untuk {course.code}
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="btn-primary"
-                    >
-                        Tambah Grup
-                    </button>
-                </div>
+            <div className="relative">
+                <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={300} />
+                <OrganicBlob className="top-36 -right-16" delay={-5} color="rgba(136, 22, 28, 0.03)" size={240} />
 
-                {/* Groups Grid */}
-                {groups.length === 0 ? (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="card flex flex-col items-center justify-center py-16 text-center"
-                    >
-                        <div className="mb-4 rounded-full bg-zinc-100 p-4 dark:bg-zinc-800">
-                            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-                            Belum ada grup
-                        </h3>
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Buat grup dan tugaskan siswa
-                        </p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="btn-primary mt-4"
-                        >
-                            Tambah Grup
-                        </button>
+                <div className="relative space-y-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <LiquidGlassCard intensity="medium" className="p-6 sm:p-8" lightMode={true}>
+                            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="max-w-3xl">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" style={brandChipStyle}>
+                                            {course.code}
+                                        </span>
+                                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" style={neutralChipStyle}>
+                                            {groups.length} grup aktif
+                                        </span>
+                                    </div>
+
+                                    <h1 className="mt-3 text-2xl font-bold sm:text-3xl" style={headingStyle}>
+                                        Orkestrasi Grup Mahasiswa
+                                    </h1>
+                                    <p className={`mt-2 max-w-2xl ${bodyTextClass}`}>
+                                        Atur pembagian kelompok, sesi diskusi, dan penugasan mahasiswa dengan bahasa visual yang sama
+                                        seperti halaman student rollout dan wave dosen sebelumnya.
+                                    </p>
+                                </div>
+
+                                <PrimaryButton onClick={() => setShowCreateModal(true)} className="justify-center">
+                                    <Plus className="h-4 w-4" />
+                                    Tambah Grup
+                                </PrimaryButton>
+                            </div>
+                        </LiquidGlassCard>
                     </motion.div>
-                ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {groups.map((group, index) => (
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {[
+                            {
+                                label: 'Total Grup',
+                                value: groups.length,
+                                detail: 'Kelompok yang sudah dibuat',
+                                icon: FolderKanban,
+                                color: '#88161c',
+                            },
+                            {
+                                label: 'Mahasiswa Tertugas',
+                                value: totalMembers,
+                                detail: 'Mahasiswa yang sudah masuk grup',
+                                icon: Users,
+                                color: '#4A4A4A',
+                            },
+                            {
+                                label: 'Belum Ditugaskan',
+                                value: unassignedStudents.length,
+                                detail: 'Perlu dipetakan ke grup',
+                                icon: UserPlus,
+                                color: '#92400e',
+                            },
+                            {
+                                label: 'Chat Space Aktif',
+                                value: totalChatSpaces,
+                                detail: `${groupsWithGoals} grup sudah punya tujuan`,
+                                icon: MessageSquare,
+                                color: '#166534',
+                            },
+                        ].map((stat, index) => (
                             <motion.div
-                                key={group.id}
+                                key={stat.label}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="card p-6"
+                                transition={{ delay: 0.08 * (index + 1) }}
                             >
-                                <div className="mb-4 flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                        {group.name}
-                                    </h3>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => setSelectedGroupJoinCode(group.joinCode)}
-                                            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                                            title="Lihat kode grup"
+                                <LiquidGlassCard intensity="light" className="p-5" lightMode={true}>
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm text-[#6B7280]">{stat.label}</p>
+                                            <p className="mt-2 text-3xl font-light" style={headingStyle}>
+                                                {stat.value}
+                                            </p>
+                                            <p className="mt-1 text-xs text-[#6B7280]">{stat.detail}</p>
+                                        </div>
+                                        <div
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: `${stat.color}12`,
+                                                border: `1px solid ${stat.color}20`,
+                                            }}
                                         >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => setDeleteGroupId(group.id)}
-                                            className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                                            title="Hapus grup"
-                                        >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Join Code Badge */}
-                                <div className="mb-3 flex items-center gap-2">
-                                    <span className="text-xs text-zinc-500">Kode:</span>
-                                    <code className="rounded bg-zinc-100 px-2 py-0.5 font-mono text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                                        {group.joinCode}
-                                    </code>
-                                </div>
-
-                                {/* Chat Spaces */}
-                                <div className="mb-4">
-                                    <div className="mb-2 flex items-center justify-between">
-                                        <span className="text-xs font-medium text-zinc-500">Sesi Diskusi</span>
-                                        <button
-                                            onClick={() => setShowChatSpaceModal(group.id)}
-                                            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                                        >
-                                            + Tambah
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1">
-                                        {group.chatSpaces && group.chatSpaces.map((space) => (
-                                                <span
-                                                    key={space.id}
-                                                    className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                                                >
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                                    {space.name}
-                                                </span>
-                                            ))}
-                                            {(!group.chatSpaces || group.chatSpaces.length === 0) && (
-                                                <span className="text-xs text-zinc-400">Belum ada sesi diskusi</span>
-                                            )}
+                                            <stat.icon className="h-5 w-5" style={{ color: stat.color }} />
                                         </div>
                                     </div>
-
-                                {/* Members List */}
-                                <div className="space-y-2">
-                                    <span className="text-xs font-medium text-zinc-500">
-                                        Anggota ({group.members?.length || 0})
-                                    </span>
-                                    {group.members && group.members.length > 0 ? (
-                                        group.members.map((member) => (
-                                            <div
-                                                key={member.id}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
-                                                    {member.name.charAt(0)}
-                                                </div>
-                                                <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                                                    {member.name}
-                                                </span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-zinc-500">Belum ada anggota</p>
-                                    )}
-                                </div>
-
-                                <button
-                                    onClick={() => setShowAssignModal(group.id)}
-                                    className="btn-secondary mt-4 w-full text-sm"
-                                >
-                                    Tugaskan Siswa
-                                </button>
+                                </LiquidGlassCard>
                             </motion.div>
                         ))}
                     </div>
-                )}
 
-                {/* Unassigned Students */}
-                {unassignedStudents.length > 0 && (
+                    {groups.length === 0 ? (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                            <LiquidGlassCard intensity="medium" className="px-6 py-16 text-center" lightMode={true}>
+                                <div
+                                    className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
+                                    style={{
+                                        background: 'rgba(136,22,28,0.08)',
+                                        border: '1px solid rgba(136,22,28,0.12)',
+                                    }}
+                                >
+                                    <FolderKanban className="h-8 w-8" style={{ color: '#88161c' }} />
+                                </div>
+                                <h2 className="mt-5 text-xl font-semibold" style={headingStyle}>
+                                    Belum ada grup di kelas ini
+                                </h2>
+                                <p className={`mx-auto mt-2 max-w-md ${bodyTextClass}`}>
+                                    Mulai dengan membuat grup pertama, lalu tugaskan mahasiswa dan siapkan ruang diskusi untuk setiap tim.
+                                </p>
+                                <div className="mt-6 flex justify-center">
+                                    <PrimaryButton onClick={() => setShowCreateModal(true)}>
+                                        <Plus className="h-4 w-4" />
+                                        Tambah Grup
+                                    </PrimaryButton>
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.div>
+                    ) : (
+                        <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                            {groups.map((group, index) => {
+                                const memberCount = group.members?.length || 0;
+                                const chatSpaceCount = group.chatSpaces?.length || 0;
+
+                                return (
+                                    <motion.div
+                                        key={group.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <LiquidGlassCard intensity="light" className="h-full p-6" lightMode={true}>
+                                            <div className="flex h-full flex-col gap-5">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span
+                                                                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl text-base font-semibold"
+                                                                style={brandChipStyle}
+                                                            >
+                                                                {group.name.charAt(0).toUpperCase()}
+                                                            </span>
+                                                            <div className="min-w-0">
+                                                                <h2 className="truncate text-lg font-semibold" style={headingStyle}>
+                                                                    {group.name}
+                                                                </h2>
+                                                                <p className="text-sm text-[#6B7280]">
+                                                                    {memberCount} anggota • {chatSpaceCount} sesi diskusi
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedGroupJoinCode(group.joinCode)}
+                                                            className="rounded-full p-2 transition-colors"
+                                                            style={glassPanelStyle}
+                                                            title="Lihat kode grup"
+                                                        >
+                                                            <Copy className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDeleteGroupId(group.id)}
+                                                            className="rounded-full p-2 transition-colors"
+                                                            style={{
+                                                                background: 'rgba(239,68,68,0.10)',
+                                                                border: '1px solid rgba(239,68,68,0.16)',
+                                                            }}
+                                                            title="Hapus grup"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" style={{ color: '#b91c1c' }} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-2">
+                                                    <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                                        Kode {group.joinCode}
+                                                    </span>
+                                                    <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium" style={getGoalChipStyle(group)}>
+                                                        {group.has_goal ? 'Tujuan tersedia' : 'Belum ada tujuan'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <div className="rounded-2xl p-4" style={glassPanelStyle}>
+                                                        <div className="flex items-center gap-2">
+                                                            <MessageSquare className="h-4 w-4" style={{ color: '#88161c' }} />
+                                                            <p className="text-sm font-medium" style={{ color: '#4A4A4A' }}>
+                                                                Sesi Diskusi
+                                                            </p>
+                                                        </div>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {group.chatSpaces && group.chatSpaces.length > 0 ? (
+                                                                group.chatSpaces.map((space) => (
+                                                                    <span
+                                                                        key={space.id}
+                                                                        className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium"
+                                                                        style={space.isDefault ? brandChipStyle : neutralChipStyle}
+                                                                    >
+                                                                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                                                        {space.name}
+                                                                    </span>
+                                                                ))
+                                                            ) : (
+                                                                <span className="text-xs text-[#6B7280]">Belum ada sesi diskusi</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rounded-2xl p-4" style={glassPanelStyle}>
+                                                        <div className="flex items-center gap-2">
+                                                            <Users className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                                            <p className="text-sm font-medium" style={{ color: '#4A4A4A' }}>
+                                                                Anggota Grup
+                                                            </p>
+                                                        </div>
+                                                        <div className="mt-3 space-y-2">
+                                                            {group.members && group.members.length > 0 ? (
+                                                                group.members.slice(0, 4).map((member) => (
+                                                                    <div key={member.id} className="flex items-center gap-2">
+                                                                        <div
+                                                                            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium"
+                                                                            style={brandChipStyle}
+                                                                        >
+                                                                            {member.name.charAt(0).toUpperCase()}
+                                                                        </div>
+                                                                        <span className="truncate text-sm text-[#4A4A4A]">{member.name}</span>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-sm text-[#6B7280]">Belum ada anggota</p>
+                                                            )}
+                                                            {memberCount > 4 && (
+                                                                <p className="text-xs text-[#6B7280]">+{memberCount - 4} mahasiswa lainnya</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-auto grid gap-3 sm:grid-cols-2">
+                                                    <SecondaryButton onClick={() => setShowAssignModal(group.id)} className="justify-center">
+                                                        <UserPlus className="h-4 w-4" />
+                                                        Tugaskan Siswa
+                                                    </SecondaryButton>
+                                                    <PrimaryButton onClick={() => setShowChatSpaceModal(group.id)} className="justify-center">
+                                                        <Plus className="h-4 w-4" />
+                                                        Tambah Sesi Diskusi
+                                                    </PrimaryButton>
+                                                </div>
+                                            </div>
+                                        </LiquidGlassCard>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="card p-6"
+                        transition={{ delay: 0.16 }}
                     >
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                            Siswa yang Belum Ditugaskan ({unassignedStudents.length})
-                        </h3>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            {unassignedStudents.map((student) => (
-                                <span
-                                    key={student.id}
-                                    className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                                >
-                                    {student.name}
+                        <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: 'rgba(245,158,11,0.10)',
+                                                border: '1px solid rgba(245,158,11,0.16)',
+                                            }}
+                                        >
+                                            <Sparkles className="h-5 w-5" style={{ color: '#92400e' }} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                Mahasiswa yang belum ditugaskan
+                                            </h2>
+                                            <p className={`mt-1 ${bodyTextClass}`}>
+                                                Pastikan semua mahasiswa masuk ke grup agar dapat mengakses alur diskusi dan tugas kolaboratif.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <span className="rounded-full px-3 py-1 text-xs font-medium" style={warningChipStyle}>
+                                    {unassignedStudents.length} mahasiswa belum ditugaskan
                                 </span>
-                            ))}
-                        </div>
+                            </div>
+
+                            {unassignedStudents.length > 0 ? (
+                                <div className="mt-5 flex flex-wrap gap-2">
+                                    {unassignedStudents.map((student) => (
+                                        <span
+                                            key={student.id}
+                                            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm"
+                                            style={glassPanelStyle}
+                                        >
+                                            <span
+                                                className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium"
+                                                style={brandChipStyle}
+                                            >
+                                                {student.name.charAt(0).toUpperCase()}
+                                            </span>
+                                            <span style={{ color: '#4A4A4A' }}>{student.name}</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-5 rounded-[28px] px-6 py-10 text-center" style={glassPanelStyle}>
+                                    <div
+                                        className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
+                                        style={{
+                                            background: 'rgba(34,197,94,0.10)',
+                                            border: '1px solid rgba(34,197,94,0.18)',
+                                        }}
+                                    >
+                                        <Check className="h-8 w-8" style={{ color: '#166534' }} />
+                                    </div>
+                                    <h3 className="mt-4 text-lg font-semibold" style={headingStyle}>
+                                        Semua mahasiswa sudah tertugaskan
+                                    </h3>
+                                    <p className={`mx-auto mt-2 max-w-md ${bodyTextClass}`}>
+                                        Tidak ada mahasiswa yang tertinggal. Anda bisa fokus pada pengelolaan diskusi dan kualitas kolaborasi.
+                                    </p>
+                                </div>
+                            )}
+                        </LiquidGlassCard>
                     </motion.div>
-                )}
+                </div>
             </div>
 
-            {/* Create Group Modal */}
             <AnimatePresence>
                 {showCreateModal && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowCreateModal(false)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className={modalBackdropClass}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -331,14 +562,27 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Buat Grup Baru
-                                </h3>
-                                <p className="mt-1 text-sm text-zinc-500">
-                                    Kode unik akan dibuat otomatis untuk siswa bergabung
-                                </p>
-                                <form onSubmit={handleCreateGroup} className="mt-4 space-y-4">
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
+                                            Buat Grup Baru
+                                        </h3>
+                                        <p className={`mt-1 ${bodyTextClass}`}>
+                                            Kode unik akan dibuat otomatis untuk mahasiswa bergabung.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="rounded-full p-2 transition-colors"
+                                        style={glassPanelStyle}
+                                    >
+                                        <X className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleCreateGroup} className="mt-6 space-y-4">
                                     <div>
                                         <InputLabel htmlFor="group_name" required>
                                             Nama Grup
@@ -347,45 +591,37 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                                             id="group_name"
                                             type="text"
                                             value={createForm.data.name}
-                                            onChange={(e) => createForm.setData('name', e.target.value)}
-                                            className="input-field mt-1"
+                                            onChange={(event) => createForm.setData('name', event.target.value)}
+                                            className="mt-1 block w-full rounded-xl border-0 bg-white/60 px-4 py-3 text-[#4A4A4A] shadow-sm ring-1 ring-inset ring-white/50 placeholder:text-[#9ca3af] focus:ring-2 focus:ring-inset focus:ring-[#88161c]/30 sm:text-sm sm:leading-6"
                                             placeholder="misalnya, Grup A"
                                         />
                                         <InputError message={createForm.errors.name} />
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCreateModal(false)}
-                                            className="btn-secondary flex-1"
-                                        >
+
+                                    <div className="flex gap-3 pt-2">
+                                        <SecondaryButton onClick={() => setShowCreateModal(false)} className="flex-1 justify-center">
                                             Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={createForm.processing}
-                                            className="btn-primary flex-1"
-                                        >
+                                        </SecondaryButton>
+                                        <PrimaryButton disabled={createForm.processing} className="flex-1 justify-center">
                                             {createForm.processing ? 'Membuat...' : 'Buat'}
-                                        </button>
+                                        </PrimaryButton>
                                     </div>
                                 </form>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
 
-            {/* Assign Members Modal */}
             <AnimatePresence>
                 {showAssignModal && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowAssignModal(null)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className={modalBackdropClass}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -393,69 +629,108 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Tugaskan Siswa
-                                </h3>
-                                <form onSubmit={handleAssignMembers} className="mt-4">
-                                    <div className="max-h-64 space-y-2 overflow-y-auto">
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-lg p-6" lightMode={true}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
+                                            Tugaskan Mahasiswa
+                                        </h3>
+                                        <p className={`mt-1 ${bodyTextClass}`}>
+                                            {selectedGroup ? `Pilih mahasiswa untuk dimasukkan ke ${selectedGroup.name}.` : 'Pilih mahasiswa untuk dimasukkan ke grup ini.'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAssignModal(null)}
+                                        className="rounded-full p-2 transition-colors"
+                                        style={glassPanelStyle}
+                                    >
+                                        <X className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleAssignMembers} className="mt-6 space-y-4">
+                                    <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                                         {unassignedStudents.length === 0 ? (
-                                            <p className="py-4 text-center text-sm text-zinc-500">
-                                                Semua siswa telah ditugaskan
-                                            </p>
-                                        ) : (
-                                            unassignedStudents.map((student) => (
-                                                <label
-                                                    key={student.id}
-                                                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 p-3 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                                            <div className="rounded-[28px] px-6 py-10 text-center" style={glassPanelStyle}>
+                                                <div
+                                                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                                                    style={{
+                                                        background: 'rgba(34,197,94,0.10)',
+                                                        border: '1px solid rgba(34,197,94,0.18)',
+                                                    }}
                                                 >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={assignForm.data.member_ids.includes(student.id)}
-                                                        onChange={() => toggleMember(student.id)}
-                                                        className="h-4 w-4 rounded border-zinc-300 text-primary-600 focus:ring-primary-500"
-                                                    />
-                                                    <span className="text-sm text-zinc-900 dark:text-zinc-100">
-                                                        {student.name}
-                                                    </span>
-                                                </label>
-                                            ))
+                                                    <Check className="h-7 w-7" style={{ color: '#166534' }} />
+                                                </div>
+                                                <p className="mt-4 text-sm font-medium" style={{ color: '#4A4A4A' }}>
+                                                    Semua mahasiswa telah ditugaskan
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            unassignedStudents.map((student) => {
+                                                const checked = assignForm.data.member_ids.includes(student.id);
+
+                                                return (
+                                                    <label
+                                                        key={student.id}
+                                                        className="flex cursor-pointer items-center gap-3 rounded-2xl p-4 transition-all"
+                                                        style={{
+                                                            background: checked ? 'rgba(136,22,28,0.10)' : 'rgba(255,255,255,0.55)',
+                                                            border: checked
+                                                                ? '1px solid rgba(136,22,28,0.18)'
+                                                                : '1px solid rgba(255,255,255,0.7)',
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => toggleMember(student.id)}
+                                                            className="h-4 w-4 rounded border-zinc-300 text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                        <div
+                                                            className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium"
+                                                            style={checked ? brandChipStyle : neutralChipStyle}
+                                                        >
+                                                            {student.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-sm" style={{ color: '#4A4A4A' }}>
+                                                            {student.name}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })
                                         )}
                                     </div>
+
                                     <InputError message={assignForm.errors.member_ids} />
-                                    <div className="mt-4 flex gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAssignModal(null)}
-                                            className="btn-secondary flex-1"
-                                        >
+
+                                    <div className="flex gap-3 pt-2">
+                                        <SecondaryButton onClick={() => setShowAssignModal(null)} className="flex-1 justify-center">
                                             Batal
-                                        </button>
-                                        <button
-                                            type="submit"
+                                        </SecondaryButton>
+                                        <PrimaryButton
                                             disabled={assignForm.processing || assignForm.data.member_ids.length === 0}
-                                            className="btn-primary flex-1"
+                                            className="flex-1 justify-center"
                                         >
                                             {assignForm.processing ? 'Menugaskan...' : 'Tugaskan'}
-                                        </button>
+                                        </PrimaryButton>
                                     </div>
                                 </form>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
 
-            {/* Join Code Modal */}
             <AnimatePresence>
                 {selectedGroupJoinCode && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setSelectedGroupJoinCode(null)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className={modalBackdropClass}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -463,60 +738,64 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-sm p-6 text-center" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-sm p-6 text-center" lightMode={true}>
+                                <div
+                                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                                    style={{
+                                        background: 'rgba(136,22,28,0.08)',
+                                        border: '1px solid rgba(136,22,28,0.12)',
+                                    }}
+                                >
+                                    <Copy className="h-6 w-6" style={{ color: '#88161c' }} />
+                                </div>
+                                <h3 className="mt-4 text-lg font-semibold" style={headingStyle}>
                                     Kode Bergabung Grup
                                 </h3>
-                                <p className="mt-2 text-sm text-zinc-500">
-                                    Bagikan kode ini kepada mahasiswa untuk bergabung ke grup
+                                <p className={`mt-2 ${bodyTextClass}`}>
+                                    Bagikan kode ini kepada mahasiswa untuk masuk ke grup yang tepat.
                                 </p>
-                                <div className="my-6 rounded-lg bg-zinc-100 p-4 dark:bg-zinc-800">
-                                    <span className="font-mono text-3xl font-bold tracking-wider text-primary-600 dark:text-primary-400">
+
+                                <div className="my-6 rounded-[28px] px-4 py-6" style={glassPanelStyle}>
+                                    <span className="font-mono text-3xl font-semibold tracking-[0.35em]" style={{ color: '#88161c' }}>
                                         {selectedGroupJoinCode}
                                     </span>
                                 </div>
-                                <button
-                                    onClick={() => copyJoinCode(selectedGroupJoinCode)}
-                                    className="btn-primary w-full"
-                                >
+
+                                <PrimaryButton onClick={() => copyJoinCode(selectedGroupJoinCode)} className="w-full justify-center">
                                     {copiedCode === selectedGroupJoinCode ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                        <>
+                                            <Check className="h-4 w-4" />
                                             Tersalin!
-                                        </span>
+                                        </>
                                     ) : (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
+                                        <>
+                                            <Copy className="h-4 w-4" />
                                             Salin Kode
-                                        </span>
+                                        </>
                                     )}
-                                </button>
+                                </PrimaryButton>
                                 <button
+                                    type="button"
                                     onClick={() => setSelectedGroupJoinCode(null)}
-                                    className="mt-3 w-full text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                    className="mt-3 w-full text-sm text-[#6B7280] transition-colors hover:text-[#4A4A4A]"
                                 >
                                     Tutup
                                 </button>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
 
-            {/* Create Chat Space Modal */}
             <AnimatePresence>
                 {showChatSpaceModal && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowChatSpaceModal(null)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className={modalBackdropClass}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -524,14 +803,27 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Buat Chat Space Baru
-                                </h3>
-                                <p className="mt-1 text-sm text-zinc-500">
-                                    Chat space adalah ruang diskusi terpisah di dalam grup
-                                </p>
-                                <form onSubmit={handleCreateChatSpace} className="mt-4 space-y-4">
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
+                                            Buat Chat Space Baru
+                                        </h3>
+                                        <p className={`mt-1 ${bodyTextClass}`}>
+                                            Tambahkan ruang diskusi terpisah di dalam grup untuk topik tertentu.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowChatSpaceModal(null)}
+                                        className="rounded-full p-2 transition-colors"
+                                        style={glassPanelStyle}
+                                    >
+                                        <X className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                    </button>
+                                </div>
+
+                                <form onSubmit={handleCreateChatSpace} className="mt-6 space-y-4">
                                     <div>
                                         <InputLabel htmlFor="chat_space_name" required>
                                             Nama Chat Space
@@ -540,45 +832,37 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                                             id="chat_space_name"
                                             type="text"
                                             value={chatSpaceForm.data.name}
-                                            onChange={(e) => chatSpaceForm.setData('name', e.target.value)}
-                                            className="input-field mt-1"
+                                            onChange={(event) => chatSpaceForm.setData('name', event.target.value)}
+                                            className="mt-1 block w-full rounded-xl border-0 bg-white/60 px-4 py-3 text-[#4A4A4A] shadow-sm ring-1 ring-inset ring-white/50 placeholder:text-[#9ca3af] focus:ring-2 focus:ring-inset focus:ring-[#88161c]/30 sm:text-sm sm:leading-6"
                                             placeholder="misalnya, Diskusi BAB 1"
                                         />
                                         <InputError message={chatSpaceForm.errors.name} />
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowChatSpaceModal(null)}
-                                            className="btn-secondary flex-1"
-                                        >
+
+                                    <div className="flex gap-3 pt-2">
+                                        <SecondaryButton onClick={() => setShowChatSpaceModal(null)} className="flex-1 justify-center">
                                             Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={chatSpaceForm.processing}
-                                            className="btn-primary flex-1"
-                                        >
+                                        </SecondaryButton>
+                                        <PrimaryButton disabled={chatSpaceForm.processing} className="flex-1 justify-center">
                                             {chatSpaceForm.processing ? 'Membuat...' : 'Buat'}
-                                        </button>
+                                        </PrimaryButton>
                                     </div>
                                 </form>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
 
-            {/* Delete Group Confirmation Modal */}
             <AnimatePresence>
                 {deleteGroupId && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setDeleteGroupId(null)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className={modalBackdropClass}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -586,39 +870,48 @@ export default function GroupsIndex({ course, groups, students }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
                                 <div className="flex items-start gap-4">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                                        <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
+                                    <div
+                                        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl"
+                                        style={{
+                                            background: 'rgba(239,68,68,0.10)',
+                                            border: '1px solid rgba(239,68,68,0.16)',
+                                        }}
+                                    >
+                                        <AlertTriangle className="h-6 w-6" style={{ color: '#b91c1c' }} />
                                     </div>
                                     <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
                                             Hapus Grup
                                         </h3>
-                                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                            Apakah Anda yakin ingin menghapus grup ini? Semua anggota, sesi diskusi, dan data terkait akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+                                        <p className={`mt-2 ${bodyTextClass}`}>
+                                            {deleteGroup
+                                                ? `Anda akan menghapus ${deleteGroup.name}. Semua anggota, sesi diskusi, dan data terkait akan hilang permanen.`
+                                                : 'Semua anggota, sesi diskusi, dan data terkait akan dihapus secara permanen.'}
                                         </p>
-                                        <div className="mt-4 flex gap-3">
+
+                                        <div className="mt-5 flex gap-3">
+                                            <SecondaryButton onClick={() => setDeleteGroupId(null)} className="flex-1 justify-center">
+                                                Batal
+                                            </SecondaryButton>
                                             <button
                                                 type="button"
-                                                onClick={() => setDeleteGroupId(null)}
-                                                className="btn-secondary flex-1"
-                                            >
-                                                Batal
-                                            </button>
-                                            <button
                                                 onClick={handleDeleteGroup}
                                                 disabled={deleteForm.processing}
-                                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                                                style={{
+                                                    background: 'linear-gradient(135deg, rgba(220,38,38,0.92) 0%, rgba(185,28,28,0.96) 100%)',
+                                                    boxShadow: '0 10px 30px rgba(185,28,28,0.28)',
+                                                }}
                                             >
+                                                <Trash2 className="h-4 w-4" />
                                                 {deleteForm.processing ? 'Menghapus...' : 'Hapus Grup'}
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}

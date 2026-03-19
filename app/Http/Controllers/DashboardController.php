@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Illuminate\Http\RedirectResponse;
 
 class DashboardController extends Controller
 {
     /**
      * Main Dashboard - Redirects based on user role
      */
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse|RedirectResponse
     {
         $user = session('user');
 
@@ -21,9 +22,9 @@ class DashboardController extends Controller
 
         // Render role-specific dashboard
         if ($user['role'] === 'lecturer') {
-            return Inertia::render('dashboard/lecturer-dashboard');
+            return Inertia::render('lecturer/dashboard');
         }
 
-        return Inertia::render('dashboard/student-dashboard');
+        return Inertia::render('student/dashboard');
     }
 }

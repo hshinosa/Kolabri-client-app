@@ -1,11 +1,23 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    Activity,
+    BarChart3,
+    Clock3,
+    Download,
+    MessageSquare,
+    Sparkles,
+    Users,
+    X,
+} from 'lucide-react';
+import { CSSProperties, useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+import { LiquidGlassCard, OrganicBlob, SecondaryButton } from '@/components/Welcome/utils/helpers';
+import { useLecturerNav } from '@/components/navigation/lecturer-nav';
 import AppLayout from '@/layouts/app-layout';
-import { Course, SharedData } from '@/types';
 import lecturer from '@/routes/lecturer';
+import { Course, SharedData } from '@/types';
 
 interface Member {
     id: string;
@@ -62,102 +74,190 @@ interface Props {
     recentActivity: RecentActivity[];
 }
 
-const getQualityColor = (score?: number) => {
-    if (score === undefined || score === null) return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
-    if (score >= 70) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-    if (score >= 50) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+const headingStyle = {
+    color: '#4A4A4A',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+} as const;
+
+const bodyTextClass = 'text-sm text-[#6B7280]';
+
+const brandChipStyle = {
+    background: 'rgba(136,22,28,0.08)',
+    color: '#88161c',
+    border: '1px solid rgba(136,22,28,0.15)',
+} as const;
+
+const neutralChipStyle = {
+    background: 'rgba(74,74,74,0.08)',
+    color: '#4A4A4A',
+    border: '1px solid rgba(74,74,74,0.12)',
+} as const;
+
+const warningChipStyle = {
+    background: 'rgba(245,158,11,0.10)',
+    color: '#92400e',
+    border: '1px solid rgba(245,158,11,0.18)',
+} as const;
+
+const dangerChipStyle = {
+    background: 'rgba(239,68,68,0.10)',
+    color: '#b91c1c',
+    border: '1px solid rgba(239,68,68,0.18)',
+} as const;
+
+const successChipStyle = {
+    background: 'rgba(34,197,94,0.10)',
+    color: '#166534',
+    border: '1px solid rgba(34,197,94,0.18)',
+} as const;
+
+const glassPanelStyle = {
+    background: 'rgba(255,255,255,0.55)',
+    border: '1px solid rgba(255,255,255,0.65)',
+} as const;
+
+const modalBackdropClass = 'fixed inset-0 z-40 bg-black/40 backdrop-blur-sm';
+
+const getQualityChipStyle = (score?: number | null): CSSProperties => {
+    if (score === undefined || score === null) return neutralChipStyle;
+    if (score >= 70) return successChipStyle;
+    if (score >= 50) return warningChipStyle;
+    return dangerChipStyle;
+};
+
+const getQualityAccent = (score?: number | null) => {
+    if (score === undefined || score === null) return '#6B7280';
+    if (score >= 70) return '#166534';
+    if (score >= 50) return '#92400e';
+    return '#b91c1c';
+};
+
+const getQualityLabel = (score?: number | null) => {
+    if (score === undefined || score === null) return 'Belum Ada Data';
+    if (score >= 70) return 'Baik';
+    if (score >= 50) return 'Perlu Perhatian';
+    return 'Butuh Intervensi';
 };
 
 const getSenderTypeLabel = (type: string) => {
     switch (type) {
-        case 'student': return 'Mahasiswa';
-        case 'lecturer': return 'Dosen';
-        case 'ai': return 'AI';
-        case 'bot': return 'Bot';
-        case 'system': return 'Sistem';
-        default: return type;
+        case 'student':
+            return 'Mahasiswa';
+        case 'lecturer':
+            return 'Dosen';
+        case 'ai':
+            return 'AI';
+        case 'bot':
+            return 'Bot';
+        case 'system':
+            return 'Sistem';
+        default:
+            return type;
     }
 };
 
-const getSenderTypeColor = (type: string) => {
+const getSenderTypeStyle = (type: string): CSSProperties => {
     switch (type) {
-        case 'ai': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
-        case 'bot': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-        case 'system': return 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400';
-        case 'lecturer': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-        default: return 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400';
+        case 'ai':
+            return {
+                background: 'rgba(168,85,247,0.10)',
+                color: '#7e22ce',
+                border: '1px solid rgba(168,85,247,0.16)',
+            };
+        case 'bot':
+            return {
+                background: 'rgba(59,130,246,0.10)',
+                color: '#1d4ed8',
+                border: '1px solid rgba(59,130,246,0.16)',
+            };
+        case 'system':
+            return neutralChipStyle;
+        case 'lecturer':
+            return {
+                background: 'rgba(245,158,11,0.10)',
+                color: '#92400e',
+                border: '1px solid rgba(245,158,11,0.16)',
+            };
+        default:
+            return brandChipStyle;
     }
 };
 
-// Engagement type descriptions and example indicators
-const engagementTypeInfo: Record<string, { description: string; examples: string[]; colorClass: string; bgClass: string; icon: string }> = {
+const engagementTypeInfo: Record<
+    string,
+    { description: string; examples: string[]; chipStyle: CSSProperties; bar: string; icon: string }
+> = {
     cognitive: {
-        description: 'Pemikiran kritis, analisis, dan pemahaman konsep',
-        examples: ['mengapa', 'bagaimana jika', 'bandingkan', 'analisis', 'evaluasi', 'jelaskan alasan'],
-        colorClass: 'text-blue-600 dark:text-blue-400',
-        bgClass: 'bg-blue-100 dark:bg-blue-900/30',
+        description: 'Pemikiran kritis, analisis, dan pemahaman konsep.',
+        examples: ['mengapa', 'bagaimana jika', 'bandingkan', 'analisis'],
+        chipStyle: {
+            background: 'rgba(59,130,246,0.10)',
+            color: '#1d4ed8',
+            border: '1px solid rgba(59,130,246,0.16)',
+        },
+        bar: '#3b82f6',
         icon: '🧠',
     },
     behavioral: {
-        description: 'Partisipasi aktif, berbagi tugas, dan koordinasi',
-        examples: ['saya akan', 'mari kita', 'sudah selesai', 'bisa bantu', 'saya coba'],
-        colorClass: 'text-green-600 dark:text-green-400',
-        bgClass: 'bg-green-100 dark:bg-green-900/30',
+        description: 'Partisipasi aktif, koordinasi tugas, dan tindakan nyata.',
+        examples: ['saya akan', 'mari kita', 'sudah selesai', 'bisa bantu'],
+        chipStyle: successChipStyle,
+        bar: '#22c55e',
         icon: '⚡',
     },
     emotional: {
-        description: 'Dukungan emosional, motivasi, dan empati',
-        examples: ['bagus', 'semangat', 'setuju', 'terima kasih', 'jangan khawatir'],
-        colorClass: 'text-purple-600 dark:text-purple-400',
-        bgClass: 'bg-purple-100 dark:bg-purple-900/30',
+        description: 'Dukungan emosional, motivasi, dan empati antaranggota.',
+        examples: ['bagus', 'semangat', 'terima kasih', 'jangan khawatir'],
+        chipStyle: {
+            background: 'rgba(168,85,247,0.10)',
+            color: '#7e22ce',
+            border: '1px solid rgba(168,85,247,0.16)',
+        },
+        bar: '#a855f7',
         icon: '💜',
     },
 };
 
+const formatDateTime = (value?: string | null) => {
+    if (!value) return '—';
+    return new Date(value).toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
 export default function GroupAnalyticsDetail({ course, group, analytics, members, chatSpaces, recentActivity }: Props) {
     const { auth } = usePage<SharedData>().props;
-    
-    // Safe defaults
+
     const safeAnalytics = analytics ?? {};
     const safeMembers = members ?? [];
     const safeChatSpaces = chatSpaces ?? [];
     const safeRecentActivity = recentActivity ?? [];
     const safeQualityBreakdown = safeAnalytics.qualityBreakdown ?? {};
-    
+
     const [liveActivity, setLiveActivity] = useState<RecentActivity[]>(safeRecentActivity);
     const [liveQuality, setLiveQuality] = useState(safeAnalytics.qualityScore);
+    const [isConnected, setIsConnected] = useState(false);
     const [showMemberModal, setShowMemberModal] = useState(false);
     const [showSessionModal, setShowSessionModal] = useState(false);
 
-    // Calculate safe percentages
     const hotPercentage = safeQualityBreakdown.hot_percentage ?? safeAnalytics.hotPercentage ?? 0;
     const lexicalVariety = safeQualityBreakdown.lexical_variety ?? 0;
     const participantCount = safeQualityBreakdown.participation ?? safeMembers.length ?? 0;
 
-    const navItems = [
-        {
-            name: 'Kelas Saya',
-            href: lecturer.courses.index.url(),
-            icon: (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-        },
-        {
-            name: 'Analytics',
-            href: lecturer.analytics.index.url({ course: course.id }),
-            icon: (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            ),
-            active: true,
-        },
-    ];
+    const navItems = useLecturerNav('analytics-group', { courseId: course.id, groupId: group.id });
 
-    // Real-time updates
+    useEffect(() => {
+        setLiveActivity(safeRecentActivity);
+    }, [safeRecentActivity]);
+
+    useEffect(() => {
+        setLiveQuality(safeAnalytics.qualityScore);
+    }, [safeAnalytics.qualityScore]);
+
     useEffect(() => {
         if (!auth.token) return;
 
@@ -165,6 +265,14 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
         const socket: Socket = io(apiUrl, {
             auth: { token: auth.token },
             transports: ['websocket', 'polling'],
+        });
+
+        socket.on('connect', () => {
+            setIsConnected(true);
+        });
+
+        socket.on('disconnect', () => {
+            setIsConnected(false);
         });
 
         socket.on('quality_update', (data) => {
@@ -178,473 +286,610 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
         };
     }, [auth.token, group.id]);
 
+    const qualityCards = [
+        {
+            label: 'HOT Thinking',
+            value: `${hotPercentage.toFixed(0)}%`,
+            detail: 'Higher-order discussion',
+            color: '#1d4ed8',
+        },
+        {
+            label: 'Lexical Variety',
+            value: `${(lexicalVariety * 100).toFixed(0)}%`,
+            detail: 'Keragaman kosakata',
+            color: '#7e22ce',
+        },
+        {
+            label: 'Participants',
+            value: participantCount,
+            detail: 'Peserta aktif yang terdeteksi',
+            color: '#166534',
+        },
+    ];
+
+    const statCards = useMemo(
+        () => [
+            {
+                label: 'Anggota',
+                value: safeMembers.length || group.memberCount,
+                detail:
+                    safeMembers.length > 0
+                        ? `${safeMembers.slice(0, 3).map((member) => member.name.split(' ')[0]).join(', ')}${
+                              safeMembers.length > 3 ? '…' : ''
+                          }`
+                        : 'Belum ada anggota terdaftar',
+                action: 'Klik untuk lihat semua anggota',
+                color: '#88161c',
+                onClick: () => setShowMemberModal(true),
+            },
+            {
+                label: 'Sesi Diskusi',
+                value: safeChatSpaces.length || group.chatSpaceCount,
+                detail: safeChatSpaces[0]?.name || 'Belum ada sesi aktif',
+                action: 'Klik untuk lihat seluruh sesi diskusi',
+                color: '#4A4A4A',
+                onClick: () => setShowSessionModal(true),
+            },
+            {
+                label: 'Total Pesan',
+                value: safeAnalytics.local_message_count ?? 0,
+                detail: 'Pesan yang dianalisis pada grup ini',
+                color: '#1d4ed8',
+            },
+            {
+                label: 'Status',
+                value: getQualityLabel(liveQuality),
+                detail: isConnected ? 'Sinkron dengan pembaruan live' : 'Menunggu sinyal pembaruan live',
+                color: getQualityAccent(liveQuality),
+            },
+        ],
+        [group.chatSpaceCount, group.memberCount, isConnected, liveQuality, safeAnalytics.local_message_count, safeChatSpaces, safeMembers],
+    );
+
+    const engagementEntries = Object.entries(safeAnalytics.engagementDistribution ?? {});
+    const engagementTotal = engagementEntries.reduce((sum, [, count]) => sum + count, 0);
+
     return (
         <AppLayout title={`${group.name} Analytics`} navItems={navItems}>
             <Head title={`${group.name} Analytics`} />
 
-            <div className="space-y-6">
-                {/* Header with breadcrumb */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    <div className="flex items-center gap-2 text-sm text-zinc-500">
-                        <Link href={lecturer.courses.index.url()} className="hover:text-primary-600">
-                            Kelas
-                        </Link>
-                        <span>/</span>
-                        <Link href={lecturer.courses.show.url({ course: course.id })} className="hover:text-primary-600">
-                            {course.code}
-                        </Link>
-                        <span>/</span>
-                        <Link href={lecturer.analytics.index.url({ course: course.id })} className="hover:text-primary-600">
-                            Analytics
-                        </Link>
-                        <span>/</span>
-                        <span className="text-zinc-900 dark:text-zinc-100">{group.name}</span>
-                    </div>
-                    <h1 className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                        {group.name} - Analisis Detail
-                    </h1>
-                </motion.div>
+            <div className="relative">
+                <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={320} />
+                <OrganicBlob className="top-40 -right-12" delay={-4} color="rgba(136, 22, 28, 0.03)" size={250} />
 
-                {/* Quality Score Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="card p-6"
-                >
-                    <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-                        <div className="text-center md:text-left">
-                            <h3 className="text-sm font-medium text-zinc-500">Skor Kualitas Diskusi</h3>
-                            <div className="mt-2 flex items-baseline gap-2">
-                                <span className={`text-5xl font-bold ${
-                                    (liveQuality ?? 0) >= 70 ? 'text-green-600 dark:text-green-400' :
-                                    (liveQuality ?? 0) >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                    'text-red-600 dark:text-red-400'
-                                }`}>
-                                    {liveQuality?.toFixed(1) ?? '-'}
-                                </span>
-                                <span className="text-xl text-zinc-400">/100</span>
-                            </div>
-                            {safeAnalytics.recommendation && (
-                                <p className="mt-3 max-w-md text-sm text-zinc-600 dark:text-zinc-400">
-                                    💡 {safeAnalytics.recommendation}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Quality Breakdown - Fixed */}
-                        <div className="grid grid-cols-3 gap-6 text-center">
-                            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                    {hotPercentage > 0 ? `${hotPercentage.toFixed(0)}%` : '0%'}
-                                </p>
-                                <p className="text-xs text-zinc-500 mt-1">HOT Thinking</p>
-                                <p className="text-xs text-zinc-400">Higher-Order</p>
-                            </div>
-                            <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                                    {lexicalVariety > 0 ? `${(lexicalVariety * 100).toFixed(0)}%` : '0%'}
-                                </p>
-                                <p className="text-xs text-zinc-500 mt-1">Lexical Variety</p>
-                                <p className="text-xs text-zinc-400">Keragaman Kata</p>
-                            </div>
-                            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                    {participantCount}
-                                </p>
-                                <p className="text-xs text-zinc-500 mt-1">Participants</p>
-                                <p className="text-xs text-zinc-400">Peserta Aktif</p>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Stats Grid - Interactive Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Anggota Card - Clickable */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                        className="card p-5 cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => setShowMemberModal(true)}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-zinc-500">Anggota</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {safeMembers.length || group.memberCount}
-                                </p>
-                            </div>
-                            <div className="flex -space-x-2">
-                                {safeMembers.slice(0, 3).map((member) => (
-                                    <div
-                                        key={member.id}
-                                        className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-xs font-medium text-primary-700 dark:text-primary-300 border-2 border-white dark:border-zinc-900"
-                                        title={member.name}
-                                    >
-                                        {member.name.charAt(0).toUpperCase()}
+                <div className="relative space-y-6">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                        <LiquidGlassCard intensity="medium" className="p-6 sm:p-8" lightMode={true}>
+                            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                                <div className="max-w-3xl">
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-[#6B7280]">
+                                        <Link href={lecturer.courses.index.url()} className="transition-colors hover:text-[#88161c]">
+                                            Kelas
+                                        </Link>
+                                        <span>/</span>
+                                        <Link
+                                            href={lecturer.courses.show.url({ course: course.id })}
+                                            className="transition-colors hover:text-[#88161c]"
+                                        >
+                                            {course.code}
+                                        </Link>
+                                        <span>/</span>
+                                        <Link
+                                            href={lecturer.analytics.index.url({ course: course.id })}
+                                            className="transition-colors hover:text-[#88161c]"
+                                        >
+                                            Analytics
+                                        </Link>
+                                        <span>/</span>
+                                        <span style={headingStyle}>{group.name}</span>
                                     </div>
-                                ))}
-                                {safeMembers.length > 3 && (
-                                    <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-300 border-2 border-white dark:border-zinc-900">
-                                        +{safeMembers.length - 3}
+
+                                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                                        <span className="rounded-full px-3 py-1 text-xs font-medium" style={brandChipStyle}>
+                                            {course.code}
+                                        </span>
+                                        <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                            {group.memberCount} anggota • {group.chatSpaceCount} sesi
+                                        </span>
+                                        <span
+                                            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+                                            style={isConnected ? successChipStyle : neutralChipStyle}
+                                        >
+                                            <Activity className="h-3.5 w-3.5" />
+                                            {isConnected ? 'Live quality aktif' : 'Menunggu koneksi live'}
+                                        </span>
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                        {safeMembers.length > 0 && (
-                            <p className="mt-2 text-xs text-primary-600 dark:text-primary-400">
-                                Klik untuk lihat semua →
-                            </p>
-                        )}
-                    </motion.div>
 
-                    {/* Sesi Diskusi Card - Clickable */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="card p-5 cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => setShowSessionModal(true)}
-                    >
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-zinc-500">Sesi Diskusi</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                    {safeChatSpaces.length || group.chatSpaceCount}
-                                </p>
+                                    <h1 className="mt-4 text-2xl font-bold sm:text-3xl" style={headingStyle}>
+                                        Detail kualitas diskusi {group.name}
+                                    </h1>
+                                    <p className={`mt-2 max-w-2xl ${bodyTextClass}`}>
+                                        Seluruh metrik kualitas, distribusi engagement, aktivitas terbaru, modal anggota, modal sesi,
+                                        dan tautan export tetap utuh dengan bahasa visual liquid-glass yang konsisten.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3 sm:grid-cols-2 xl:w-[380px] xl:grid-cols-1">
+                                    <div className="rounded-[28px] p-4" style={glassPanelStyle}>
+                                        <p className="text-xs uppercase tracking-[0.2em] text-[#6B7280]">Skor terkini</p>
+                                        <div className="mt-2 flex items-end gap-2">
+                                            <span className="text-4xl font-semibold" style={{ ...headingStyle, color: getQualityAccent(liveQuality) }}>
+                                                {liveQuality?.toFixed(1) ?? '—'}
+                                            </span>
+                                            <span className="pb-1 text-sm text-[#9CA3AF]">/ 100</span>
+                                        </div>
+                                        <p className="mt-2 text-xs text-[#6B7280]">Status: {getQualityLabel(liveQuality)}</p>
+                                    </div>
+
+                                    <SecondaryButton href={`/api/analytics/export/${course.id}`} className="justify-center">
+                                        <Download className="h-4 w-4" />
+                                        Export process mining
+                                    </SecondaryButton>
+                                </div>
                             </div>
-                            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        {safeChatSpaces.length > 0 && (
-                            <p className="mt-2 text-xs text-zinc-500 truncate">
-                                Terbaru: {safeChatSpaces[0]?.name || 'Untitled'}
-                            </p>
-                        )}
-                        {safeChatSpaces.length > 0 && (
-                            <p className="mt-1 text-xs text-primary-600 dark:text-primary-400">
-                                Klik untuk lihat semua →
-                            </p>
-                        )}
+                        </LiquidGlassCard>
                     </motion.div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
-                        className="card p-5"
+                        transition={{ delay: 0.08 }}
                     >
-                        <p className="text-sm text-zinc-500">Total Pesan</p>
-                        <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                            {safeAnalytics.local_message_count ?? 0}
-                        </p>
+                        <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                            <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                                <div className="max-w-xl">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="rounded-full px-3 py-1 text-xs font-medium" style={getQualityChipStyle(liveQuality)}>
+                                            {getQualityLabel(liveQuality)}
+                                        </span>
+                                        <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                            {safeAnalytics.local_message_count ?? 0} pesan dianalisis
+                                        </span>
+                                    </div>
+                                    <p className="mt-4 text-sm font-medium text-[#6B7280]">Skor kualitas diskusi</p>
+                                    <div className="mt-2 flex items-end gap-3">
+                                        <span className="text-6xl font-semibold" style={{ ...headingStyle, color: getQualityAccent(liveQuality) }}>
+                                            {liveQuality?.toFixed(1) ?? '—'}
+                                        </span>
+                                        <span className="pb-2 text-lg text-[#9CA3AF]">/100</span>
+                                    </div>
+                                    {safeAnalytics.recommendation && (
+                                        <div className="mt-4 rounded-[24px] p-4" style={glassPanelStyle}>
+                                            <div className="flex items-start gap-3">
+                                                <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: '#88161c' }} />
+                                                <p className="text-sm leading-6 text-[#6B7280]">{safeAnalytics.recommendation}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid gap-3 sm:grid-cols-3 xl:w-[52%]">
+                                    {qualityCards.map((card) => (
+                                        <div
+                                            key={card.label}
+                                            className="rounded-[24px] p-4 text-center"
+                                            style={{
+                                                background: `${card.color}10`,
+                                                border: `1px solid ${card.color}18`,
+                                            }}
+                                        >
+                                            <p className="text-2xl font-semibold" style={{ color: card.color }}>
+                                                {card.value}
+                                            </p>
+                                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280]">
+                                                {card.label}
+                                            </p>
+                                            <p className="mt-1 text-xs text-[#6B7280]">{card.detail}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </LiquidGlassCard>
                     </motion.div>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {statCards.map((card, index) => {
+                            const content = (
+                                <LiquidGlassCard intensity="light" className="h-full p-5" lightMode={true}>
+                                    <div className="flex h-full flex-col justify-between gap-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p className="text-sm text-[#6B7280]">{card.label}</p>
+                                                <p className="mt-2 text-3xl font-light break-words" style={headingStyle}>
+                                                    {card.value}
+                                                </p>
+                                            </div>
+                                            <div
+                                                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                                style={{
+                                                    background: `${card.color}12`,
+                                                    border: `1px solid ${card.color}20`,
+                                                }}
+                                            >
+                                                {card.label === 'Anggota' ? (
+                                                    <Users className="h-5 w-5" style={{ color: card.color }} />
+                                                ) : card.label === 'Sesi Diskusi' ? (
+                                                    <MessageSquare className="h-5 w-5" style={{ color: card.color }} />
+                                                ) : card.label === 'Total Pesan' ? (
+                                                    <BarChart3 className="h-5 w-5" style={{ color: card.color }} />
+                                                ) : (
+                                                    <Activity className="h-5 w-5" style={{ color: card.color }} />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-xs text-[#6B7280]">{card.detail}</p>
+                                            {card.action && (
+                                                <p className="mt-3 text-xs font-medium" style={{ color: '#88161c' }}>
+                                                    {card.action}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </LiquidGlassCard>
+                            );
+
+                            return (
+                                <motion.div
+                                    key={card.label}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.08 * (index + 1) }}
+                                >
+                                    {card.onClick ? (
+                                        <button type="button" onClick={card.onClick} className="block h-full w-full text-left">
+                                            {content}
+                                        </button>
+                                    ) : (
+                                        content
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+
+                    {engagementEntries.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.22 }}
+                        >
+                            <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                                style={{
+                                                    background: 'rgba(59,130,246,0.10)',
+                                                    border: '1px solid rgba(59,130,246,0.16)',
+                                                }}
+                                            >
+                                                <BarChart3 className="h-5 w-5" style={{ color: '#1d4ed8' }} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                    Distribusi engagement (SSRL)
+                                                </h2>
+                                                <p className={`mt-1 ${bodyTextClass}`}>
+                                                    Klasifikasi percakapan berdasarkan jenis keterlibatan dalam pembelajaran kolaboratif.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                        {engagementTotal} sinyal terklasifikasi
+                                    </span>
+                                </div>
+
+                                <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                                    {engagementEntries.map(([type, count]) => {
+                                        const key = type.toLowerCase();
+                                        const info = engagementTypeInfo[key] || engagementTypeInfo.behavioral;
+                                        const percentage = engagementTotal > 0 ? (count / engagementTotal) * 100 : 0;
+
+                                        return (
+                                            <div key={type} className="rounded-[28px] p-5" style={glassPanelStyle}>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">{info.icon}</span>
+                                                    <span
+                                                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize"
+                                                        style={info.chipStyle}
+                                                    >
+                                                        {type}
+                                                    </span>
+                                                </div>
+
+                                                <div className="mt-4 flex items-end justify-between gap-3">
+                                                    <p className="text-4xl font-semibold" style={{ ...headingStyle, color: info.chipStyle.color as string }}>
+                                                        {count}
+                                                    </p>
+                                                    <p className="text-sm font-medium" style={{ color: info.chipStyle.color as string }}>
+                                                        {percentage.toFixed(0)}%
+                                                    </p>
+                                                </div>
+
+                                                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-500"
+                                                        style={{ width: `${percentage}%`, background: info.bar }}
+                                                    />
+                                                </div>
+
+                                                <p className="mt-3 text-sm leading-6 text-[#6B7280]">{info.description}</p>
+
+                                                <div className="mt-4 flex flex-wrap gap-2">
+                                                    {info.examples.map((example) => (
+                                                        <span
+                                                            key={example}
+                                                            className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                                            style={info.chipStyle}
+                                                        >
+                                                            “{example}”
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.div>
+                    )}
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="card p-5"
                     >
-                        <p className="text-sm text-zinc-500">Status</p>
-                        <span className={`mt-1 inline-block rounded-full px-3 py-1 text-sm font-medium ${getQualityColor(liveQuality)}`}>
-                            {liveQuality === null || liveQuality === undefined 
-                                ? 'Belum Ada Data'
-                                : liveQuality >= 70 
-                                    ? 'Baik' 
-                                    : liveQuality >= 50 
-                                        ? 'Perlu Perhatian' 
-                                        : 'Butuh Intervensi'}
-                        </span>
-                    </motion.div>
-                </div>
-
-                {/* Enhanced Engagement Distribution with Examples */}
-                {safeAnalytics.engagementDistribution && Object.keys(safeAnalytics.engagementDistribution).length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.35 }}
-                        className="card p-6"
-                    >
-                        <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                            Distribusi Engagement (SSRL)
-                        </h3>
-                        <p className="mb-4 text-sm text-zinc-500">
-                            Klasifikasi pesan berdasarkan tipe keterlibatan dalam pembelajaran kolaboratif
-                        </p>
-                        <div className="grid gap-6 lg:grid-cols-3">
-                            {Object.entries(safeAnalytics.engagementDistribution).map(([type, count]) => {
-                                const total = Object.values(safeAnalytics.engagementDistribution!).reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? (count / total) * 100 : 0;
-                                const typeKey = type.toLowerCase();
-                                const info = engagementTypeInfo[typeKey] || engagementTypeInfo.behavioral;
-                                
-                                return (
-                                    <div key={type} className={`p-4 rounded-lg border-2 border-opacity-50 ${info.bgClass}`}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-2xl">{info.icon}</span>
-                                            <span className={`text-lg font-semibold capitalize ${info.colorClass}`}>
-                                                {type}
-                                            </span>
+                        <LiquidGlassCard intensity="light" className="p-6" lightMode={true}>
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: 'rgba(136,22,28,0.08)',
+                                                border: '1px solid rgba(136,22,28,0.12)',
+                                            }}
+                                        >
+                                            <Clock3 className="h-5 w-5" style={{ color: '#88161c' }} />
                                         </div>
-                                        
-                                        {/* Stats */}
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                                {count}
-                                            </span>
-                                            <span className={`text-sm font-medium ${info.colorClass}`}>
-                                                {percentage.toFixed(0)}%
-                                            </span>
+                                        <div>
+                                            <h2 className="text-lg font-semibold" style={headingStyle}>
+                                                Aktivitas terbaru
+                                            </h2>
+                                            <p className={`mt-1 ${bodyTextClass}`}>
+                                                Riwayat pesan terbaru grup, termasuk intervensi, tetap tampil dalam urutan dan konteks yang sama.
+                                            </p>
                                         </div>
-                                        
-                                        {/* Progress bar */}
-                                        <div className="h-2 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-3">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-500 ${
-                                                    typeKey === 'cognitive' ? 'bg-blue-500' :
-                                                    typeKey === 'behavioral' ? 'bg-green-500' :
-                                                    'bg-purple-500'
-                                                }`}
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
-                                        
-                                        {/* Description */}
-                                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">
-                                            {info.description}
-                                        </p>
-                                        
-                                        {/* Example keywords */}
-                                        <div className="flex flex-wrap gap-1">
-                                            <span className="text-xs text-zinc-500 mr-1">Contoh kata kunci:</span>
-                                            {info.examples.slice(0, 4).map((example, i) => (
-                                                <span
-                                                    key={i}
-                                                    className={`inline-block px-2 py-0.5 text-xs rounded-full ${info.bgClass} ${info.colorClass}`}
-                                                >
-                                                    "{example}"
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Recent Activity Timeline */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="card p-6"
-                >
-                    <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                        Aktivitas Terbaru
-                    </h3>
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                        {liveActivity.length === 0 ? (
-                            <p className="text-center text-sm text-zinc-500 py-8">
-                                Belum ada aktivitas diskusi.
-                            </p>
-                        ) : (
-                            liveActivity.map((activity) => (
-                                <div
-                                    key={activity.id}
-                                    className={`flex gap-3 rounded-lg p-3 ${
-                                        activity.isIntervention
-                                            ? 'bg-purple-50 dark:bg-purple-900/20'
-                                            : 'bg-zinc-50 dark:bg-zinc-800/50'
-                                    }`}
-                                >
-                                    <div className="flex-shrink-0">
-                                        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium ${getSenderTypeColor(activity.senderType)}`}>
-                                            {activity.senderName.charAt(0).toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                                                {activity.senderName}
-                                            </span>
-                                            <span className={`rounded px-1.5 py-0.5 text-xs ${getSenderTypeColor(activity.senderType)}`}>
-                                                {getSenderTypeLabel(activity.senderType)}
-                                            </span>
-                                            {activity.isIntervention && (
-                                                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                                                    Intervensi
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2">
-                                            {activity.content}
-                                        </p>
-                                        <p className="mt-1 text-xs text-zinc-400">
-                                            {new Date(activity.createdAt).toLocaleString('id-ID')}
-                                        </p>
                                     </div>
                                 </div>
-                            ))
-                        )}
-                    </div>
-                </motion.div>
 
-                {/* Export Button */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                    className="flex justify-end"
-                >
-                    <a
-                        href={`/api/analytics/export/${course.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-secondary flex items-center gap-2"
-                    >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Export untuk Process Mining
-                    </a>
-                </motion.div>
-            </div>
-
-            {/* Members Modal */}
-            <AnimatePresence>
-                {showMemberModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-                        onClick={() => setShowMemberModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="p-4 border-b border-zinc-200 dark:border-zinc-700 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Daftar Anggota ({safeMembers.length})
-                                </h3>
-                                <button
-                                    onClick={() => setShowMemberModal(false)}
-                                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                >
-                                    <svg className="h-5 w-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+                                <span className="rounded-full px-3 py-1 text-xs font-medium" style={neutralChipStyle}>
+                                    {liveActivity.length} aktivitas
+                                </span>
                             </div>
-                            <div className="p-4 overflow-y-auto max-h-[60vh]">
-                                {safeMembers.length === 0 ? (
-                                    <p className="text-center text-sm text-zinc-500 py-4">
-                                        Belum ada anggota
-                                    </p>
+
+                            <div className="mt-5 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                                {liveActivity.length === 0 ? (
+                                    <div className="rounded-[28px] px-6 py-14 text-center" style={glassPanelStyle}>
+                                        <div
+                                            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+                                            style={{
+                                                background: 'rgba(136,22,28,0.08)',
+                                                border: '1px solid rgba(136,22,28,0.12)',
+                                            }}
+                                        >
+                                            <MessageSquare className="h-6 w-6" style={{ color: '#88161c' }} />
+                                        </div>
+                                        <p className="mt-4 text-base font-semibold" style={headingStyle}>
+                                            Belum ada aktivitas diskusi
+                                        </p>
+                                        <p className={`mx-auto mt-2 max-w-md ${bodyTextClass}`}>
+                                            Aktivitas terbaru akan muncul di sini saat anggota grup mulai berinteraksi.
+                                        </p>
+                                    </div>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {safeMembers.map((member) => (
-                                            <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                                <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-sm font-medium text-primary-700 dark:text-primary-300">
-                                                    {member.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                                                        {member.name}
-                                                    </p>
-                                                    <p className="text-xs text-zinc-500 truncate">
-                                                        {member.email}
-                                                    </p>
+                                    liveActivity.map((activity) => (
+                                        <div
+                                            key={activity.id}
+                                            className="rounded-[24px] p-4"
+                                            style={
+                                                activity.isIntervention
+                                                    ? {
+                                                          background: 'rgba(168,85,247,0.10)',
+                                                          border: '1px solid rgba(168,85,247,0.16)',
+                                                      }
+                                                    : glassPanelStyle
+                                            }
+                                        >
+                                            <div className="flex gap-3">
+                                                <span
+                                                    className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                                                    style={getSenderTypeStyle(activity.senderType)}
+                                                >
+                                                    {activity.senderName.charAt(0).toUpperCase()}
+                                                </span>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="text-sm font-semibold" style={headingStyle}>
+                                                            {activity.senderName}
+                                                        </span>
+                                                        <span
+                                                            className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                                            style={getSenderTypeStyle(activity.senderType)}
+                                                        >
+                                                            {getSenderTypeLabel(activity.senderType)}
+                                                        </span>
+                                                        {activity.isIntervention && (
+                                                            <span
+                                                                className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                                                style={{
+                                                                    background: 'rgba(168,85,247,0.10)',
+                                                                    color: '#7e22ce',
+                                                                    border: '1px solid rgba(168,85,247,0.16)',
+                                                                }}
+                                                            >
+                                                                Intervensi
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <p className="mt-2 text-sm leading-6 text-[#6B7280]">{activity.content}</p>
+                                                    <p className="mt-2 text-xs text-[#9CA3AF]">{formatDateTime(activity.createdAt)}</p>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))
                                 )}
                             </div>
-                        </motion.div>
+                        </LiquidGlassCard>
                     </motion.div>
+                </div>
+            </div>
+
+            <AnimatePresence>
+                {showMemberModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className={modalBackdropClass}
+                            onClick={() => setShowMemberModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        >
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
+                                            Daftar anggota ({safeMembers.length})
+                                        </h3>
+                                        <p className={`mt-1 ${bodyTextClass}`}>
+                                            Seluruh anggota grup tetap dapat ditinjau dari modal yang sama.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMemberModal(false)}
+                                        className="rounded-full p-2 transition-colors"
+                                        style={glassPanelStyle}
+                                    >
+                                        <X className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                    </button>
+                                </div>
+
+                                <div className="mt-6 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                                    {safeMembers.length === 0 ? (
+                                        <div className="rounded-[24px] px-6 py-10 text-center" style={glassPanelStyle}>
+                                            <p className="text-sm text-[#6B7280]">Belum ada anggota</p>
+                                        </div>
+                                    ) : (
+                                        safeMembers.map((member) => (
+                                            <div key={member.id} className="flex items-center gap-3 rounded-[24px] p-4" style={glassPanelStyle}>
+                                                <span
+                                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold"
+                                                    style={brandChipStyle}
+                                                >
+                                                    {member.name.charAt(0).toUpperCase()}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold" style={headingStyle}>
+                                                        {member.name}
+                                                    </p>
+                                                    <p className="mt-1 truncate text-xs text-[#6B7280]">{member.email}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
 
-            {/* Sessions Modal */}
             <AnimatePresence>
                 {showSessionModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-                        onClick={() => setShowSessionModal(false)}
-                    >
+                    <>
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className={modalBackdropClass}
+                            onClick={() => setShowSessionModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="p-4 border-b border-zinc-200 dark:border-zinc-700 flex justify-between items-center">
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Sesi Diskusi ({safeChatSpaces.length})
-                                </h3>
-                                <button
-                                    onClick={() => setShowSessionModal(false)}
-                                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                >
-                                    <svg className="h-5 w-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <div className="p-4 overflow-y-auto max-h-[60vh]">
-                                {safeChatSpaces.length === 0 ? (
-                                    <p className="text-center text-sm text-zinc-500 py-4">
-                                        Belum ada sesi diskusi
-                                    </p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {safeChatSpaces.map((session) => (
-                                            <div key={session.id} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                                        {session.name || 'Sesi Tanpa Judul'}
-                                                    </p>
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full ${
-                                                        session.isClosed
-                                                            ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                    }`}>
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-lg font-semibold" style={headingStyle}>
+                                            Sesi diskusi ({safeChatSpaces.length})
+                                        </h3>
+                                        <p className={`mt-1 ${bodyTextClass}`}>
+                                            Seluruh status sesi, waktu dibuat, dan waktu selesai tetap tersedia di modal ini.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSessionModal(false)}
+                                        className="rounded-full p-2 transition-colors"
+                                        style={glassPanelStyle}
+                                    >
+                                        <X className="h-4 w-4" style={{ color: '#4A4A4A' }} />
+                                    </button>
+                                </div>
+
+                                <div className="mt-6 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+                                    {safeChatSpaces.length === 0 ? (
+                                        <div className="rounded-[24px] px-6 py-10 text-center" style={glassPanelStyle}>
+                                            <p className="text-sm text-[#6B7280]">Belum ada sesi diskusi</p>
+                                        </div>
+                                    ) : (
+                                        safeChatSpaces.map((session) => (
+                                            <div key={session.id} className="rounded-[24px] p-4" style={glassPanelStyle}>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-sm font-semibold" style={headingStyle}>
+                                                            {session.name || 'Sesi Tanpa Judul'}
+                                                        </p>
+                                                        <p className="mt-2 text-xs text-[#6B7280]">
+                                                            Dibuat: {formatDateTime(session.createdAt)}
+                                                        </p>
+                                                        {session.closedAt && (
+                                                            <p className="mt-1 text-xs text-[#6B7280]">
+                                                                Selesai: {formatDateTime(session.closedAt)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <span
+                                                        className="rounded-full px-3 py-1 text-xs font-medium"
+                                                        style={session.isClosed ? neutralChipStyle : successChipStyle}
+                                                    >
                                                         {session.isClosed ? 'Selesai' : 'Aktif'}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-zinc-500">
-                                                    Dibuat: {new Date(session.createdAt).toLocaleString('id-ID')}
-                                                </p>
-                                                {session.closedAt && (
-                                                    <p className="text-xs text-zinc-500">
-                                                        Selesai: {new Date(session.closedAt).toLocaleString('id-ID')}
-                                                    </p>
-                                                )}
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </LiquidGlassCard>
                         </motion.div>
-                    </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </AppLayout>
