@@ -341,11 +341,14 @@ export function OrganicBlob({
     const prefersReduced = useReducedMotion();
     return (
         <motion.div
-            className={`absolute rounded-full blur-3xl ${className}`}
+            className={`pointer-events-none absolute rounded-full blur-3xl ${className}`}
             style={{
                 width: size,
                 height: size,
                 background: `radial-gradient(circle at 30% 30%, ${color}, rgba(255,255,255,0) 70%)`,
+                willChange: 'transform',
+                transform: 'translateZ(0)',
+                WebkitTransform: 'translateZ(0)',
             }}
             initial={{
                 scale: 0.8,

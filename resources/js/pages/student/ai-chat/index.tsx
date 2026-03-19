@@ -1,10 +1,13 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Bot, CalendarDays, Check, Menu, MessageSquare, Pencil, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
 
+import { LiquidGlassCard, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
 import { AiMessage, SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import student from '@/routes/student';
+import { useStudentNav } from '@/components/navigation/student-nav';
 import auth from '@/routes/auth';
 
 interface AiChat {
@@ -20,20 +23,73 @@ interface Props {
     activeChat: AiChat | null;
 }
 
+const headingStyle = {
+    color: '#4A4A4A',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+} as const;
+
+const bodyTextClass = 'text-sm text-[#4B5563]';
+
+const emptyStateCards = [
+    {
+        icon: MessageSquare,
+        eyebrow: 'Fast Start',
+        title: 'Bantu pecahkan ide, umpan balik, dan tugas jadi lebih terarah.',
+        prompt: 'Bantu saya menyusun ide utama untuk tugas saya dan beri langkah pengerjaannya.',
+    },
+    {
+        icon: Sparkles,
+        eyebrow: 'Collaborate with AI',
+        title: 'Diskusikan materi, minta ringkasan, lalu rapikan pemahaman Anda lebih cepat.',
+        prompt: 'Ringkas materi yang sedang saya pelajari lalu jelaskan poin paling pentingnya.',
+    },
+    {
+        icon: CalendarDays,
+        eyebrow: 'Planning',
+        title: 'Atur prioritas belajar, pecah target mingguan, dan tetap fokus pada progres.',
+        prompt: 'Bantu saya membuat rencana belajar mingguan yang realistis untuk mata kuliah saya.',
+    },
+] as const;
+
+const quickActions = [
+    'Deep Research',
+    'Ringkas Materi',
+    'Buat Rencana',
+    'Cari Ide Tugas',
+] as const;
+
 export default function AiChatIndex({ chats, activeChat }: Props) {
     const { auth: authData } = usePage<SharedData>().props;
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const pageProps = usePage<SharedData>().props as SharedData & {
+        errors?: Record<string, string>;
+        flash?: {
+            success?: string;
+            error?: string;
+        };
+    };
+    const navItems = useStudentNav('ai-chat');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+    const [editingChatId, setEditingChatId] = useState<string | null>(null);
+    const [editingTitle, setEditingTitle] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const safeChats = chats ?? [];
     const messages = activeChat?.messages ?? [];
+    const userFirstName = useMemo(() => authData.user?.name?.split(' ')[0] || 'Mahasiswa', [authData.user?.name]);
+    const isEmptyState = messages.length === 0;
 
     const messageForm = useForm({
         content: '',
     });
+
+    const titleForm = useForm({
+        title: '',
+    });
+
+    const pageErrors = pageProps.errors ?? {};
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -47,35 +103,34 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
 
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
-        if (!messageForm.data.content.trim() || messageForm.processing) return;
+        if (messageForm.processing) return;
+
+        if (!messageForm.data.content.trim()) {
+            messageForm.setError('content', 'Pesan tidak boleh kosong.');
+            return;
+        }
+
+        messageForm.clearErrors('content');
 
         if (!activeChat) {
             // Create new conversation with first message
-            router.post(
-                student.aiChat.store.url(),
-                { 
-                    title: messageForm.data.content.substring(0, 50),
-                    first_message: messageForm.data.content 
+            router.post(student.aiChat.store.url(), {
+                title: messageForm.data.content.substring(0, 50),
+                first_message: messageForm.data.content,
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    messageForm.reset();
                 },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        messageForm.reset();
-                    },
-                }
-            );
+            });
         } else {
             // Add message to existing conversation
-            router.post(
-                student.aiChat.messages.store.url({ chat: activeChat.id }),
-                { content: messageForm.data.content },
-                {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        messageForm.reset();
-                    },
-                }
-            );
+            messageForm.post(student.aiChat.messages.store.url({ chat: activeChat.id }), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    messageForm.reset();
+                },
+            });
         }
     };
 
@@ -87,6 +142,42 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
         router.delete(student.aiChat.destroy.url({ chat: id }), {
             onSuccess: () => {
                 setShowDeleteModal(null);
+            },
+        });
+    };
+
+    const handleStartRename = (chat: AiChat) => {
+        setEditingChatId(chat.id);
+        setEditingTitle(chat.title || '');
+        titleForm.setData('title', chat.title || '');
+        titleForm.clearErrors();
+    };
+
+    const handleCancelRename = () => {
+        setEditingChatId(null);
+        setEditingTitle('');
+        titleForm.reset();
+        titleForm.clearErrors();
+    };
+
+    const handleSubmitRename = (chatId: string) => {
+        if (titleForm.processing) return;
+
+        if (!titleForm.data.title.trim()) {
+            titleForm.setError('title', 'Judul chat tidak boleh kosong.');
+            return;
+        }
+
+        titleForm.clearErrors('title');
+
+        titleForm.patch(student.aiChat.update.url({ chat: chatId }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                handleCancelRename();
+                router.reload({
+                    only: ['chats', 'activeChat', 'flash', 'errors'],
+                    preserveScroll: true,
+                });
             },
         });
     };
@@ -107,316 +198,474 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) {
+            return 'Baru saja';
+        }
+
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
         if (date.toDateString() === today.toDateString()) {
             return 'Hari Ini';
-        } else if (date.toDateString() === yesterday.toDateString()) {
-            return 'Kemarin';
-        } else {
-            return date.toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-            });
         }
+
+        if (date.toDateString() === yesterday.toDateString()) {
+            return 'Kemarin';
+        }
+
+        return date.toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+        });
+    };
+
+    const prefillPrompt = (prompt: string) => {
+        messageForm.setData('content', prompt);
+        requestAnimationFrame(() => {
+            inputRef.current?.focus({ preventScroll: true });
+        });
     };
 
     return (
-        <div className="flex h-screen bg-gradient-to-br from-zinc-50 via-white to-primary-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+        <div
+            className="relative flex h-screen overflow-hidden"
+            style={{
+                background: 'linear-gradient(135deg, #f5f0f0 0%, #e8e4f0 50%, #f0e8e8 100%)',
+            }}
+        >
             <Head title="Chat dengan AI" />
 
-            {/* Sidebar - Conversation History */}
-            <AnimatePresence>
-                {sidebarOpen && (
-                    <motion.aside
-                        initial={{ width: 0, opacity: 0 }}
-                        animate={{ width: 320, opacity: 1 }}
-                        exit={{ width: 0, opacity: 0 }}
-                        transition={{ type: 'tween', duration: 0.2 }}
-                        className="flex h-full flex-col border-r border-primary-100 bg-white/80 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80"
-                    >
-                        {/* Sidebar Header */}
-                        <div className="flex h-16 items-center justify-between border-b border-primary-100 px-4 dark:border-zinc-800">
-                            <Link
-                                href={student.courses.index.url()}
-                                className="flex items-center gap-2 text-zinc-600 hover:text-primary-600 dark:text-zinc-400 dark:hover:text-primary-400"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                                <span className="text-sm font-medium">Kembali</span>
-                            </Link>
-                            <button
-                                onClick={handleNewChat}
-                                className="rounded-lg bg-primary-600 p-2 text-white hover:bg-primary-700"
-                                title="Chat Baru"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                            </button>
+            <aside
+                className="hidden w-64 flex-shrink-0 lg:block"
+                style={{
+                    background: 'rgba(255, 255, 255, 0.6)',
+                    backdropFilter: 'blur(40px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.5)',
+                }}
+            >
+                <div className="flex h-full flex-col">
+                    <div className="flex h-16 items-center gap-3 px-5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                            <img src="/LogoKolabri.webp" alt="Kolabri" className="h-7 w-7" />
                         </div>
-
-                        {/* Conversation List */}
-                        <div className="flex-1 overflow-y-auto p-3">
-                            {safeChats.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="mb-3 rounded-full bg-zinc-100 p-3 dark:bg-zinc-800">
-                                        <svg className="h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                    </div>
-                                    <p className="text-sm text-zinc-500">Belum ada percakapan</p>
-                                    <p className="mt-1 text-xs text-zinc-400">Mulai chat baru untuk bertanya kepada AI</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-1">
-                                    {safeChats.map((chat) => (
-                                        <div
-                                            key={chat.id}
-                                            className={`group relative flex items-center rounded-lg p-3 transition-colors ${
-                                                activeChat?.id === chat.id
-                                                    ? 'bg-primary-100 dark:bg-primary-900/30'
-                                                    : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                            }`}
-                                        >
-                                            <Link
-                                                href={student.aiChat.show.url({ chat: chat.id })}
-                                                className="flex flex-1 items-center gap-3"
-                                            >
-                                                <div className="flex-shrink-0">
-                                                    <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                    </svg>
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                                        {chat.title || 'Chat Baru'}
-                                                    </p>
-                                                    <p className="text-xs text-zinc-500">
-                                                        {formatDate(chat.updated_at)}
-                                                    </p>
-                                                </div>
-                                            </Link>
-                                            <button
-                                                onClick={() => setShowDeleteModal(chat.id)}
-                                                className="absolute right-2 hidden rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-error-600 group-hover:block dark:hover:bg-zinc-700 dark:hover:text-error-400"
-                                            >
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* User Info */}
-                        <div className="border-t border-primary-100 p-3 dark:border-zinc-800">
-                            <div className="flex items-center gap-3 rounded-lg bg-primary-50/50 p-3 dark:bg-zinc-800/50">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary-200 bg-gradient-to-br from-primary-600 to-primary-800 font-heading text-sm font-bold text-white">
-                                    {authData.user?.name?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-primary-900 dark:text-zinc-100">
-                                        {authData.user?.name || 'User'}
-                                    </p>
-                                    <p className="truncate text-xs text-primary-600 dark:text-primary-400">Mahasiswa</p>
-                                </div>
-                                <Link
-                                    href={auth.logout.url()}
-                                    method="post"
-                                    as="button"
-                                    className="rounded-lg p-2 text-zinc-400 hover:bg-white hover:text-warning-600 dark:hover:bg-zinc-700"
-                                    title="Keluar"
-                                >
-                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                </Link>
-                            </div>
-                        </div>
-                    </motion.aside>
-                )}
-            </AnimatePresence>
-
-            {/* Main Chat Area */}
-            <div className="flex flex-1 flex-col">
-                {/* Chat Header */}
-                <header className="flex h-16 items-center justify-between border-b border-primary-100 bg-white/80 px-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="rounded-lg p-2 text-zinc-600 hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-zinc-800"
-                        >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600">
-                                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 className="font-heading text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                                    AI Assistant
-                                </h1>
-                                <p className="text-xs text-zinc-500">Siap membantu pembelajaran Anda</p>
-                            </div>
+                        <div>
+                            <span className="text-lg font-bold" style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Kolabri</span>
+                            <p className="text-xs text-[#6B7280]">Platform Kolaborasi</p>
                         </div>
                     </div>
-                    {activeChat && (
-                        <span className="text-xs text-zinc-500">{activeChat.title}</span>
-                    )}
-                </header>
 
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 lg:p-6">
-                    {messages.length === 0 ? (
-                        <div className="flex h-full flex-col items-center justify-center text-center">
-                            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg">
-                                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+                        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">Menu</p>
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                                    item.active ? 'text-[#88161c]' : 'text-[#4A4A4A] hover:text-[#88161c]'
+                                }`}
+                                style={{
+                                    background: item.active ? 'rgba(136,22,28,0.08)' : 'transparent',
+                                    border: item.active ? '1px solid rgba(136,22,28,0.15)' : '1px solid transparent',
+                                }}
+                            >
+                                <span className={item.active ? 'text-[#88161c]' : 'text-[#6B7280]'}>{item.icon}</span>
+                                {item.name}
+                                {item.active && <span className="ml-auto h-2 w-2 rounded-full bg-[#88161c]" />}
+                            </Link>
+                        ))}
+                    </nav>
+
+                    <div className="p-3" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                        <div className="flex items-center gap-3 rounded-2xl p-3" style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-white" style={{ background: 'linear-gradient(135deg, #88161c 0%, #a41219 100%)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                {authData.user?.name?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate font-semibold text-[#4A4A4A]">{authData.user?.name || 'User'}</p>
+                                <p className="truncate text-xs capitalize text-[#6B7280]">{authData.user?.role || 'student'}</p>
+                            </div>
+                            <Link
+                                href={auth.logout.url()}
+                                method="post"
+                                as="button"
+                                className="rounded-xl p-1.5 text-[#6B7280] transition-colors hover:text-[#88161c]"
+                                style={{ background: 'rgba(255, 255, 255, 0.5)' }}
+                                title="Keluar"
+                            >
+                                    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                            </div>
-                            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                                Halo! Saya AI Assistant
-                            </h2>
-                            <p className="mt-2 max-w-md text-zinc-600 dark:text-zinc-400">
-                                Saya siap membantu Anda dengan pertanyaan seputar mata kuliah, tugas, atau konsep pembelajaran lainnya.
-                            </p>
-                            <div className="mt-6 grid max-w-2xl gap-3 sm:grid-cols-2">
-                                {[
-                                    { icon: '📚', text: 'Jelaskan konsep pembelajaran kooperatif' },
-                                    { icon: '💡', text: 'Bantu saya memahami materi ini' },
-                                    { icon: '📝', text: 'Berikan contoh untuk tugas saya' },
-                                    { icon: '🎯', text: 'Tips untuk belajar efektif' },
-                                ].map((suggestion, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => messageForm.setData('content', suggestion.text)}
-                                        className="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 text-left text-sm transition-colors hover:border-primary-300 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-                                    >
-                                        <span className="text-lg">{suggestion.icon}</span>
-                                        <span className="text-zinc-700 dark:text-zinc-300">{suggestion.text}</span>
-                                    </button>
-                                ))}
-                            </div>
+                            </Link>
                         </div>
-                    ) : (
-                        <div className="mx-auto max-w-3xl space-y-4">
-                            {messages.map((message) => (
-                                <motion.div
-                                    key={message.id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-                                >
-                                    <div
-                                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                                            message.role === 'user'
-                                                ? 'bg-primary-600'
-                                                : 'bg-gradient-to-br from-violet-500 to-purple-600'
-                                        }`}
-                                    >
-                                        {message.role === 'user' ? (
-                                            <span className="text-sm font-bold text-white">
-                                                {authData.user?.name?.charAt(0).toUpperCase() || 'U'}
-                                            </span>
-                                        ) : (
-                                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                            </svg>
+                    </div>
+                </div>
+            </aside>
+
+            <div className="flex flex-1 flex-col overflow-hidden">
+                <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
+                    <div className="mb-4 lg:hidden">
+                        <Link
+                            href={student.courses.index.url()}
+                            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#4A4A4A]"
+                            style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.8)' }}
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Kembali
+                        </Link>
+                    </div>
+
+            <div className="space-y-4">
+                <div className="flex items-center justify-end">
+                    <button
+                        type="button"
+                        onClick={() => setSidebarOpen(true)}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/75 bg-white/72 text-[#4A4A4A] shadow-[0_12px_28px_rgba(148,163,184,0.14)] transition-colors hover:text-[#88161c]"
+                        title="Buka riwayat chat"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="grid gap-4 grid-cols-1">
+                    <div className={`flex min-h-[calc(100vh-180px)] flex-col gap-4 ${isEmptyState ? 'justify-center' : ''}`}>
+                        {isEmptyState ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 18 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.35 }}
+                                className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center"
+                            >
+                                <div className="mx-auto w-full max-w-3xl text-center">
+                                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(136,22,28,0.14)] bg-[rgba(136,22,28,0.07)] shadow-[0_14px_32px_rgba(136,22,28,0.08)]">
+                                        <Sparkles className="h-6 w-6 text-[#88161c]" />
+                                    </div>
+                                    <h2 className="text-3xl font-bold leading-[1.15] tracking-[-0.02em] md:text-4xl" style={headingStyle}>
+                                        What are you working on, {userFirstName}?
+                                    </h2>
+                                    <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#5B6473] sm:text-base">
+                                        Mulai percakapan, minta ringkasan materi, susun rencana belajar, atau eksplor ide tugas dengan AI Kolabri.
+                                    </p>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <LiquidGlassCard intensity="light" className="p-5 lg:p-6" lightMode={true}>
+                                <div className="space-y-4">
+                                    {messages.map((message) => (
+                                        <motion.div
+                                            key={message.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`flex gap-2.5 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+                                        >
+                                            <div
+                                                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                                                style={{
+                                                    background: message.role === 'user'
+                                                        ? 'linear-gradient(135deg, #88161c 0%, #a41219 100%)'
+                                                        : 'rgba(136,22,28,0.08)',
+                                                    border: message.role === 'user'
+                                                        ? '1px solid rgba(255,255,255,0.18)'
+                                                        : '1px solid rgba(136,22,28,0.12)',
+                                                }}
+                                            >
+                                                {message.role === 'user' ? (
+                                                    <span className="text-sm font-bold text-white">
+                                                        {authData.user?.name?.charAt(0).toUpperCase() || 'U'}
+                                                    </span>
+                                                ) : (
+                                                        <Sparkles className="h-3.5 w-3.5" style={{ color: '#88161c' }} />
+                                                )}
+                                            </div>
+                                            <div
+                                                className="max-w-[84%] rounded-[24px] px-4 py-3.5"
+                                                style={{
+                                                    background: message.role === 'user'
+                                                        ? 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)'
+                                                        : 'rgba(255,255,255,0.82)',
+                                                    border: message.role === 'user'
+                                                        ? '1px solid rgba(255,255,255,0.18)'
+                                                        : '1px solid rgba(255,255,255,0.82)',
+                                                    boxShadow: '0 12px 26px rgba(148,163,184,0.10)',
+                                                }}
+                                            >
+                                                <p className={`text-sm whitespace-pre-wrap leading-7 ${message.role === 'user' ? 'text-white' : 'text-[#374151]'}`}>
+                                                    {message.content}
+                                                </p>
+                                                <p className={`mt-1 text-xs ${message.role === 'user' ? 'text-white/70' : 'text-[#6B7280]'}`}>
+                                                    {formatTime(message.created_at)}
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                    {isTyping && (
+                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                                <Sparkles className="h-3.5 w-3.5" style={{ color: '#88161c' }} />
+                                            </div>
+                                            <div className="rounded-[24px] px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.6)' }}>
+                                                <div className="flex gap-1">
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '0ms' }} />
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '150ms' }} />
+                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '300ms' }} />
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
+                            </LiquidGlassCard>
+                        )}
+
+                        <div className={`${isEmptyState ? 'mx-auto w-full max-w-4xl pb-10 lg:pb-12' : 'mt-auto pb-4 lg:pb-5'}`}>
+                        <LiquidGlassCard intensity="medium" className={`${isEmptyState ? 'p-4 lg:p-5' : 'p-4 lg:p-5'}`} lightMode={true}>
+                            <form onSubmit={handleSendMessage}>
+                                {(messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat || pageProps.flash?.success) && (
+                                    <div className="mb-3 space-y-2 px-1">
+                                        {pageProps.flash?.success && (
+                                            <div className="rounded-2xl border px-3 py-2 text-sm font-medium text-emerald-700" style={{ background: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.18)' }}>
+                                                {pageProps.flash.success}
+                                            </div>
+                                        )}
+                                        {(messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat) && (
+                                            <div className="rounded-2xl border px-3 py-2 text-sm font-medium text-red-700" style={{ background: 'rgba(220,38,38,0.08)', borderColor: 'rgba(220,38,38,0.18)' }}>
+                                                {messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat}
+                                            </div>
                                         )}
                                     </div>
-                                    <div
-                                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                                            message.role === 'user'
-                                                ? 'bg-primary-600 text-white'
-                                                : 'bg-white shadow-sm ring-1 ring-zinc-100 dark:bg-zinc-800 dark:ring-zinc-700'
-                                        }`}
-                                    >
-                                        <p className={`text-sm whitespace-pre-wrap ${message.role === 'assistant' ? 'text-zinc-900 dark:text-zinc-100' : ''}`}>
-                                            {message.content}
-                                        </p>
-                                        <p
-                                            className={`mt-1 text-xs ${
-                                                message.role === 'user' ? 'text-primary-200' : 'text-zinc-400'
-                                            }`}
-                                        >
-                                            {formatTime(message.created_at)}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {isTyping && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600">
-                                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                        </svg>
-                                    </div>
-                                    <div className="rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-zinc-100 dark:bg-zinc-800 dark:ring-zinc-700">
-                                        <div className="flex gap-1">
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '0ms' }} />
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '150ms' }} />
-                                            <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" style={{ animationDelay: '300ms' }} />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-                    )}
-                </div>
-
-                {/* Message Input */}
-                <div className="border-t border-primary-100 bg-white/80 p-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-                    <form onSubmit={handleSendMessage} className="mx-auto max-w-3xl">
-                        <div className="relative flex items-end gap-3 rounded-2xl bg-zinc-100 p-2 dark:bg-zinc-800">
-                            <textarea
-                                ref={inputRef}
-                                value={messageForm.data.content}
-                                onChange={(e) => messageForm.setData('content', e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Ketik pesan Anda..."
-                                rows={1}
-                                className="max-h-32 min-h-[40px] flex-1 resize-none bg-transparent px-3 py-2 text-sm text-zinc-900 placeholder-zinc-500 focus:outline-none dark:text-zinc-100"
-                                style={{ height: 'auto' }}
-                                onInput={(e) => {
-                                    const target = e.target as HTMLTextAreaElement;
-                                    target.style.height = 'auto';
-                                    target.style.height = Math.min(target.scrollHeight, 128) + 'px';
-                                }}
-                            />
-                            <button
-                                type="submit"
-                                disabled={!messageForm.data.content.trim() || messageForm.processing}
-                                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {messageForm.processing ? (
-                                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                    </svg>
                                 )}
-                            </button>
+                                <div className={`flex flex-wrap gap-2 px-1 ${isEmptyState ? 'mb-4 justify-start' : 'mb-2.5'}`}>
+                                    {(isEmptyState ? emptyStateCards : quickActions).map((item, index) => {
+                                        const action = typeof item === 'string' ? item : item.eyebrow;
+                                        const prompt = typeof item === 'string'
+                                            ? action === 'Deep Research'
+                                                ? 'Lakukan riset mendalam tentang topik ini dan jelaskan temuan utamanya.'
+                                                : action === 'Ringkas Materi'
+                                                    ? 'Ringkas materi ini menjadi poin-poin yang mudah dipahami.'
+                                                    : action === 'Buat Rencana'
+                                                        ? 'Bantu saya membuat rencana langkah demi langkah untuk menyelesaikan tugas ini.'
+                                                        : 'Berikan beberapa ide tugas atau topik diskusi yang relevan untuk materi ini.'
+                                            : item.prompt;
+
+                                        return (
+                                        <button
+                                            key={`${action}-${index}`}
+                                            type="button"
+                                            onClick={() => prefillPrompt(prompt)}
+                                            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[rgba(136,22,28,0.10)] sm:text-sm ${isEmptyState ? 'shadow-[0_8px_22px_rgba(148,163,184,0.08)]' : ''}`}
+                                            style={{
+                                                color: '#88161c',
+                                                background: 'rgba(136,22,28,0.08)',
+                                                border: '1px solid rgba(136,22,28,0.14)',
+                                            }}
+                                        >
+                                            {action}
+                                        </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="rounded-[24px] border bg-white/92 px-3 py-2.5 shadow-[0_14px_32px_rgba(148,163,184,0.10)]" style={{ borderColor: 'rgba(226,232,240,0.9)' }}>
+                                    <div className="flex items-center gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={handleNewChat}
+                                            className="flex h-9 w-9 items-center justify-center self-center rounded-xl text-[#6B7280] transition-colors hover:bg-[#f3f4f6] hover:text-[#88161c]"
+                                            title="Chat baru"
+                                        >
+                                            <Plus className="h-4.5 w-4.5" />
+                                        </button>
+                                        <textarea
+                                            ref={inputRef}
+                                            value={messageForm.data.content}
+                                            onChange={(e) => messageForm.setData('content', e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder={isEmptyState ? 'Ask anything about your coursework, ideas, or study plan' : 'Contoh: “Jelaskan konsep ini dengan sederhana”'}
+                                            rows={1}
+                                            className="min-h-[40px] flex-1 resize-none overflow-hidden bg-transparent px-1 py-2.5 text-sm leading-6 text-[#374151] placeholder-[#7B8494] focus:outline-none"
+                                            style={{ height: '40px' }}
+                                            onInput={(e) => {
+                                                const target = e.target as HTMLTextAreaElement;
+                                                target.style.height = 'auto';
+                                                target.style.height = target.scrollHeight + 'px';
+                                            }}
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!messageForm.data.content.length || messageForm.processing}
+                                            className="flex h-10 w-10 flex-shrink-0 items-center justify-center self-center rounded-full text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                                            style={{
+                                                background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                                boxShadow: '0 10px 20px rgba(136,22,28,0.16)',
+                                            }}
+                                        >
+                                            {messageForm.processing ? (
+                                                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                            ) : (
+                                                    <Send className="h-4.5 w-4.5" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-center text-[11px] text-[#748091] sm:text-xs">
+                                    Tekan Enter untuk mengirim, Shift+Enter untuk baris baru
+                                </p>
+                            </form>
+                        </LiquidGlassCard>
                         </div>
-                        <p className="mt-2 text-center text-xs text-zinc-400">
-                            Tekan Enter untuk mengirim, Shift+Enter untuk baris baru
-                        </p>
-                    </form>
+                    </div>
+
                 </div>
             </div>
+                </main>
+            </div>
+
+            <AnimatePresence>
+                {sidebarOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.4 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSidebarOpen(false)}
+                            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+                        />
+                        <motion.aside
+                            initial={{ x: 320, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: 320, opacity: 0 }}
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                            className="fixed inset-y-0 right-0 z-50 w-full max-w-[340px] p-3"
+                        >
+                            <LiquidGlassCard intensity="light" className="flex h-full flex-col p-3.5 lg:p-4" lightMode={true}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280]">Percakapan</p>
+                                        <h3 className="mt-1 text-base font-semibold" style={headingStyle}>
+                                            Riwayat AI
+                                        </h3>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSidebarOpen(false)}
+                                        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 text-[#6B7280] transition-colors hover:text-[#88161c]"
+                                        title="Tutup sidebar"
+                                    >
+                                        <X className="h-4.5 w-4.5" />
+                                    </button>
+                                </div>
+
+                                <PrimaryButton onClick={handleNewChat} className="mt-4 w-full justify-center px-4 py-3 text-sm">
+                                    <Plus className="h-4 w-4" />
+                                    Chat Baru
+                                </PrimaryButton>
+
+                                <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1">
+                                    {safeChats.length === 0 ? (
+                                        <div className="rounded-2xl border px-4 py-6 text-center" style={{ borderColor: 'rgba(136,22,28,0.10)', background: 'rgba(255,255,255,0.55)' }}>
+                                            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                                <MessageSquare className="h-5 w-5" style={{ color: '#88161c' }} />
+                                            </div>
+                                            <p className="text-sm font-medium text-[#4A4A4A]">Belum ada percakapan</p>
+                                            <p className="mt-1 text-xs text-[#6B7280]">Mulai chat baru untuk bertanya kepada AI.</p>
+                                        </div>
+                                    ) : (
+                                        safeChats.map((chat) => (
+                                            <div
+                                                key={chat.id}
+                                                className={`group relative rounded-2xl border p-2.5 transition-colors ${activeChat?.id === chat.id ? 'bg-white/80' : 'bg-white/45 hover:bg-white/72'}`}
+                                                style={{ borderColor: activeChat?.id === chat.id ? 'rgba(136,22,28,0.15)' : 'rgba(255,255,255,0.55)' }}
+                                            >
+                                                <Link href={student.aiChat.show.url({ chat: chat.id })} className="flex items-start gap-3 pr-16" onClick={() => setSidebarOpen(false)}>
+                                                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                                        <MessageSquare className="h-4 w-4" style={{ color: '#88161c' }} />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        {editingChatId === chat.id ? (
+                                                            <div className="space-y-2">
+                                                                <input
+                                                                    value={editingTitle}
+                                                                    onChange={(e) => {
+                                                                        setEditingTitle(e.target.value);
+                                                                        titleForm.setData('title', e.target.value);
+                                                                        if (titleForm.errors.title) {
+                                                                            titleForm.clearErrors('title');
+                                                                        }
+                                                                    }}
+                                                                    onClick={(e) => e.preventDefault()}
+                                                                    onKeyDown={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            handleSubmitRename(chat.id);
+                                                                        }
+                                                                        if (e.key === 'Escape') {
+                                                                            e.preventDefault();
+                                                                            handleCancelRename();
+                                                                        }
+                                                                    }}
+                                                                    className="w-full rounded-xl border border-[rgba(136,22,28,0.16)] bg-white/90 px-3 py-2 text-sm font-medium text-[#4A4A4A] outline-none"
+                                                                />
+                                                                {titleForm.errors.title && (
+                                                                    <p className="text-xs font-medium text-red-600">{titleForm.errors.title}</p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <p className={`truncate text-sm font-medium ${activeChat?.id === chat.id ? 'text-[#88161c]' : 'text-[#4A4A4A]'}`}>
+                                                                {chat.title || 'Chat Baru'}
+                                                            </p>
+                                                        )}
+                                                        <p className="mt-1 text-xs text-[#6B7280]">{formatDate(chat.updated_at)}</p>
+                                                    </div>
+                                                </Link>
+                                                <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100">
+                                                    {editingChatId === chat.id ? (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleSubmitRename(chat.id)}
+                                                                className="rounded-lg p-1 text-emerald-600 transition-colors hover:bg-white/80"
+                                                            >
+                                                                <Check className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleCancelRename}
+                                                                className="rounded-lg p-1 text-[#6B7280] transition-colors hover:bg-white/80 hover:text-[#88161c]"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartRename(chat)}
+                                                                className="rounded-lg p-1 text-[#6B7280] transition-colors hover:bg-white/80 hover:text-[#88161c]"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setShowDeleteModal(chat.id)}
+                                                                className="rounded-lg p-1 text-[#6B7280] transition-colors hover:bg-white/80 hover:text-[#88161c]"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </LiquidGlassCard>
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
@@ -427,7 +676,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                             animate={{ opacity: 0.5 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowDeleteModal(null)}
-                            className="fixed inset-0 z-40 bg-black"
+                            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -435,33 +684,39 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <div className="card w-full max-w-sm p-6 text-center" onClick={(e) => e.stopPropagation()}>
-                                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-error-100 dark:bg-error-900/30">
-                                    <svg className="h-6 w-6 text-error-600 dark:text-error-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                    Hapus Percakapan?
-                                </h3>
-                                <p className="mt-2 text-sm text-zinc-500">
-                                    Percakapan ini akan dihapus secara permanen dan tidak dapat dikembalikan.
-                                </p>
-                                <div className="mt-6 flex gap-3">
-                                    <button
-                                        onClick={() => setShowDeleteModal(null)}
-                                        className="btn-secondary flex-1"
+                            <LiquidGlassCard intensity="heavy" className="w-full max-w-sm text-center" lightMode={true}>
+                                <div onClick={(e) => e.stopPropagation()} className="p-5">
+                                    <div 
+                                        className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full"
+                                        style={{
+                                            background: 'rgba(220,38,38,0.08)',
+                                            border: '1px solid rgba(220,38,38,0.15)',
+                                        }}
                                     >
-                                        Batal
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteChat(showDeleteModal)}
-                                        className="flex-1 rounded-lg bg-error-600 px-4 py-2 text-sm font-medium text-white hover:bg-error-700"
-                                    >
-                                        Hapus
-                                    </button>
+                                        <Trash2 className="h-5 w-5 text-red-600" />
+                                    </div>
+                                    <h3 className="text-base font-semibold" style={headingStyle}>
+                                        Hapus Percakapan?
+                                    </h3>
+                                    <p className={`mt-2 ${bodyTextClass}`}>
+                                        Percakapan ini akan dihapus secara permanen dan tidak dapat dikembalikan.
+                                    </p>
+                                    <div className="mt-5 flex gap-2.5">
+                                        <SecondaryButton onClick={() => setShowDeleteModal(null)} className="flex-1">
+                                            Batal
+                                        </SecondaryButton>
+                                        <PrimaryButton
+                                            onClick={() => handleDeleteChat(showDeleteModal)}
+                                            className="flex-1"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                                            }}
+                                        >
+                                            Hapus
+                                        </PrimaryButton>
+                                    </div>
                                 </div>
-                            </div>
+                            </LiquidGlassCard>
                         </motion.div>
                     </>
                 )}
