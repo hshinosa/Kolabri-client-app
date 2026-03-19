@@ -233,9 +233,9 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
     const { auth } = usePage<SharedData>().props;
 
     const safeAnalytics = analytics ?? {};
-    const safeMembers = members ?? [];
-    const safeChatSpaces = chatSpaces ?? [];
-    const safeRecentActivity = recentActivity ?? [];
+    const safeMembers = useMemo(() => members ?? [], [members]);
+    const safeChatSpaces = useMemo(() => chatSpaces ?? [], [chatSpaces]);
+    const safeRecentActivity = useMemo(() => recentActivity ?? [], [recentActivity]);
     const safeQualityBreakdown = safeAnalytics.qualityBreakdown ?? {};
 
     const [liveActivity, setLiveActivity] = useState<RecentActivity[]>(safeRecentActivity);

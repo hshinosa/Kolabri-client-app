@@ -155,7 +155,7 @@ const getEngagementStyle = (type: string) => {
 export default function CourseAnalytics({ course, analytics }: Props) {
     const { auth } = usePage<SharedData>().props;
     const summary = analytics?.summary ?? defaultSummary;
-    const groups = analytics?.groups ?? [];
+    const groups = useMemo(() => analytics?.groups ?? [], [analytics?.groups]);
 
     const [liveGroups, setLiveGroups] = useState<GroupAnalytics[]>(groups);
     const [alerts, setAlerts] = useState<
