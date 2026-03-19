@@ -9,13 +9,13 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * NOTE: The 'users' table is managed by CoRegula Core API (Prisma/Node.js).
+     * NOTE: The 'users' table is managed by Kolabri Core API (Prisma/Node.js).
      * Laravel skips creating it to avoid conflicts with the existing schema.
      * Core API users table has: uuid id, email, password, name, role (enum), googleId, avatarUrl, isActive
      */
     public function up(): void
     {
-        // Skip creating 'users' table - already exists from CoRegula Core API
+        // Skip creating 'users' table - already exists from Kolabri Core API
         // Schema::create('users', function (Blueprint $table) {
         //     $table->id();
         //     $table->string('name');
@@ -56,7 +56,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Do NOT drop 'users' table - it's managed by CoRegula Core API
+        // Do NOT drop 'users' table - it's managed by Kolabri Core API
         // Schema::dropIfExists('users');
 
         Schema::dropIfExists('password_reset_tokens');
