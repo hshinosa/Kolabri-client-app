@@ -1,7 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Bot, CalendarDays, Check, Menu, MessageSquare, Pencil, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, Menu, MessageSquare, Pencil, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
 
 import { LiquidGlassCard, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
 import { AiMessage, SharedData } from '@/types';
@@ -9,6 +9,7 @@ import { usePage } from '@inertiajs/react';
 import student from '@/routes/student';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import auth from '@/routes/auth';
+import AppLayout from '@/layouts/app-layout';
 
 interface AiChat {
     id: string;
@@ -228,96 +229,11 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     };
 
     return (
-        <div
-            className="relative flex h-screen overflow-hidden"
-            style={{
-                background: 'linear-gradient(135deg, #f5f0f0 0%, #e8e4f0 50%, #f0e8e8 100%)',
-            }}
-        >
+        <AppLayout title="Chat dengan AI" navItems={navItems}>
             <Head title="Chat dengan AI" />
 
-            <aside
-                className="hidden w-64 flex-shrink-0 lg:block"
-                style={{
-                    background: 'rgba(255, 255, 255, 0.6)',
-                    backdropFilter: 'blur(40px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.5)',
-                }}
-            >
-                <div className="flex h-full flex-col">
-                    <div className="flex h-16 items-center gap-3 px-5" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
-                            <img src="/LogoKolabri.webp" alt="Kolabri" className="h-7 w-7" />
-                        </div>
-                        <div>
-                            <span className="text-lg font-bold" style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Kolabri</span>
-                            <p className="text-xs text-[#6B7280]">Platform Kolaborasi</p>
-                        </div>
-                    </div>
-
-                    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-                        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[#6B7280]">Menu</p>
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                                    item.active ? 'text-[#88161c]' : 'text-[#4A4A4A] hover:text-[#88161c]'
-                                }`}
-                                style={{
-                                    background: item.active ? 'rgba(136,22,28,0.08)' : 'transparent',
-                                    border: item.active ? '1px solid rgba(136,22,28,0.15)' : '1px solid transparent',
-                                }}
-                            >
-                                <span className={item.active ? 'text-[#88161c]' : 'text-[#6B7280]'}>{item.icon}</span>
-                                {item.name}
-                                {item.active && <span className="ml-auto h-2 w-2 rounded-full bg-[#88161c]" />}
-                            </Link>
-                        ))}
-                    </nav>
-
-                    <div className="p-3" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                        <div className="flex items-center gap-3 rounded-2xl p-3" style={{ background: 'rgba(255, 255, 255, 0.4)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-white" style={{ background: 'linear-gradient(135deg, #88161c 0%, #a41219 100%)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                                {authData.user?.name?.charAt(0).toUpperCase() || 'U'}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate font-semibold text-[#4A4A4A]">{authData.user?.name || 'User'}</p>
-                                <p className="truncate text-xs capitalize text-[#6B7280]">{authData.user?.role || 'student'}</p>
-                            </div>
-                            <Link
-                                href={auth.logout.url()}
-                                method="post"
-                                as="button"
-                                className="rounded-xl p-1.5 text-[#6B7280] transition-colors hover:text-[#88161c]"
-                                style={{ background: 'rgba(255, 255, 255, 0.5)' }}
-                                title="Keluar"
-                            >
-                                    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <div className="flex flex-1 flex-col overflow-hidden">
-                <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5">
-                    <div className="mb-4 lg:hidden">
-                        <Link
-                            href={student.courses.index.url()}
-                            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#4A4A4A]"
-                            style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.8)' }}
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            Kembali
-                        </Link>
-                    </div>
-
-            <div className="space-y-4">
-                <div className="flex items-center justify-end">
+            <div className="flex h-[calc(100vh-100px)] flex-col">
+                <div className="flex items-center justify-end mb-4">
                     <button
                         type="button"
                         onClick={() => setSidebarOpen(true)}
@@ -328,8 +244,8 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                     </button>
                 </div>
 
-                <div className="grid gap-4 grid-cols-1">
-                    <div className={`flex min-h-[calc(100vh-180px)] flex-col gap-4 ${isEmptyState ? 'justify-center' : ''}`}>
+                <div className="grid gap-4 grid-cols-1 flex-1">
+                    <div className={`flex min-h-0 flex-col gap-4 ${isEmptyState ? 'justify-center' : ''}`}>
                         {isEmptyState ? (
                             <motion.div
                                 initial={{ opacity: 0, y: 18 }}
@@ -350,8 +266,8 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                 </div>
                             </motion.div>
                         ) : (
-                            <LiquidGlassCard intensity="light" className="p-5 lg:p-6" lightMode={true}>
-                                <div className="space-y-4">
+                            <LiquidGlassCard intensity="light" className="flex-1 overflow-hidden p-5 lg:p-6" lightMode={true}>
+                                <div className="h-full space-y-4 overflow-y-auto">
                                     {messages.map((message) => (
                                         <motion.div
                                             key={message.id}
@@ -418,7 +334,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                             </LiquidGlassCard>
                         )}
 
-                        <div className={`${isEmptyState ? 'mx-auto w-full max-w-4xl pb-10 lg:pb-12' : 'mt-auto pb-4 lg:pb-5'}`}>
+                        <div className={`${isEmptyState ? 'mx-auto w-full max-w-4xl pb-4' : 'mt-auto pb-2'}`}>
                         <LiquidGlassCard intensity="medium" className={`${isEmptyState ? 'p-4 lg:p-5' : 'p-4 lg:p-5'}`} lightMode={true}>
                             <form onSubmit={handleSendMessage}>
                                 {(messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat || pageProps.flash?.success) && (
@@ -480,7 +396,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                             value={messageForm.data.content}
                                             onChange={(e) => messageForm.setData('content', e.target.value)}
                                             onKeyDown={handleKeyDown}
-                                            placeholder={isEmptyState ? 'Ask anything about your coursework, ideas, or study plan' : 'Contoh: “Jelaskan konsep ini dengan sederhana”'}
+                                            placeholder={isEmptyState ? 'Ask anything about your coursework, ideas, or study plan' : 'Contoh: "Jelaskan konsep ini dengan sederhana"'}
                                             rows={1}
                                             className="min-h-[40px] flex-1 resize-none overflow-hidden bg-transparent px-1 py-2.5 text-sm leading-6 text-[#374151] placeholder-[#7B8494] focus:outline-none"
                                             style={{ height: '40px' }}
@@ -517,12 +433,8 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                         </LiquidGlassCard>
                         </div>
                     </div>
-
                 </div>
             </div>
-                </main>
-            </div>
-
             <AnimatePresence>
                 {sidebarOpen && (
                     <>
@@ -721,6 +633,6 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                     </>
                 )}
             </AnimatePresence>
-        </div>
+        </AppLayout>
     );
 }

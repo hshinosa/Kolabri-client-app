@@ -130,7 +130,7 @@ export default function StudentCoursesIndex({ courses }: Props) {
                                             {course.name}
                                         </h3>
                                         <p className="mt-2 text-sm text-[#6B7280]">
-                                            {course.owner?.name || (course as any).ownerName || 'Dosen Tidak Diketahui'}
+                                            {course.owner?.name || course.ownerName || 'Dosen Tidak Diketahui'}
                                         </p>
                                         <div 
                                             className="mt-4 flex items-center text-sm font-medium"
