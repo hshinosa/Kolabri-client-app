@@ -1,10 +1,12 @@
 import { Head, usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
+import { BarChart3, BookOpen, Plus, Users } from 'lucide-react';
 
 import { useLecturerNav } from '@/components/navigation/lecturer-nav';
+import { LiquidGlassCard, OrganicBlob } from '@/components/Welcome/utils/helpers';
 import AppLayout from '@/layouts/app-layout';
-import { SharedData } from '@/types';
 import lecturer from '@/routes/lecturer';
+import { SharedData } from '@/types';
 
 export default function LecturerDashboard() {
     const { auth } = usePage<SharedData>().props;
@@ -14,116 +16,161 @@ export default function LecturerDashboard() {
         <AppLayout title="Dasbor" navItems={navItems}>
             <Head title="Dasbor Dosen" />
 
-            <div className="space-y-6">
-                {/* Welcome Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="card bg-gradient-to-r from-primary-600 to-primary-700 p-6 text-white"
-                >
-                    <h1 className="text-2xl font-bold">
-                        Selamat datang kembali, {auth.user?.name}!
-                    </h1>
-                    <p className="mt-1 text-primary-100">
-                        Kelola kelas Anda dan lacak kemajuan siswa
-                    </p>
-                </motion.div>
+            <div className="relative">
+                <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={300} />
+                <OrganicBlob className="top-40 -right-20" delay={-5} color="rgba(136, 22, 28, 0.03)" size={250} />
 
-                {/* Quick Stats */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        { label: 'Kelas Aktif', value: '—', icon: '📚' },
-                        { label: 'Total Siswa', value: '—', icon: '👥' },
-                        { label: 'Grup Aktif', value: '—', icon: '🎯' },
-                        { label: 'Minggu Ini', value: '—', icon: '📊' },
-                    ].map((stat, index) => (
-                        <motion.div
-                            key={stat.label}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 * (index + 1) }}
-                            className="card p-4"
-                        >
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                                    {stat.label}
-                                </p>
-                                <span className="text-xl">{stat.icon}</span>
+                <div className="relative space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h1
+                                        className="text-2xl font-bold"
+                                        style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                                    >
+                                        Selamat datang kembali, {auth.user?.name}!
+                                    </h1>
+                                    <p className="mt-2 text-[#6B7280]">
+                                        Kelola kelas Anda dan pantau kolaborasi mahasiswa dari satu tempat.
+                                    </p>
+                                </div>
+                                <div
+                                    className="flex h-14 w-14 items-center justify-center rounded-2xl"
+                                    style={{
+                                        background: 'rgba(136,22,28,0.08)',
+                                        border: '1px solid rgba(136,22,28,0.12)',
+                                    }}
+                                >
+                                    <BookOpen className="h-7 w-7" style={{ color: '#88161c' }} />
+                                </div>
                             </div>
-                            <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                {stat.value}
-                            </p>
-                        </motion.div>
-                    ))}
-                </div>
+                        </LiquidGlassCard>
+                    </motion.div>
 
-                {/* Quick Actions */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="card p-6"
-                >
-                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                        Tindakan Cepat
-                    </h2>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <a
-                            href={lecturer.courses.create.url()}
-                            className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-                        >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/30">
-                                <svg className="h-5 w-5 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                    Buat Kelas
-                                </p>
-                                <p className="text-sm text-zinc-500">
-                                    Tambahkan kelas baru
-                                </p>
-                            </div>
-                        </a>
-                        <a
-                            href={lecturer.courses.index.url()}
-                            className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-                        >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-100 dark:bg-accent-900/30">
-                                <svg className="h-5 w-5 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                    Kelola Kelas
-                                </p>
-                                <p className="text-sm text-zinc-500">
-                                    Lihat semua kelas
-                                </p>
-                            </div>
-                        </a>
-                        <a
-                            href={lecturer.courses.index.url()}
-                            className="flex items-center gap-3 rounded-lg border border-zinc-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50 dark:border-zinc-700 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
-                        >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                    Kelola Grup
-                                </p>
-                                <p className="text-sm text-zinc-500">
-                                    Atur siswa
-                                </p>
-                            </div>
-                        </a>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            { label: 'Kelas Aktif', value: '—', icon: BookOpen, color: '#88161c' },
+                            { label: 'Total Siswa', value: '—', icon: Users, color: '#4A4A4A' },
+                            { label: 'Grup Aktif', value: '—', icon: BarChart3, color: '#6B7280' },
+                            { label: 'Minggu Ini', value: '—', icon: Plus, color: '#88161c' },
+                        ].map((stat, index) => (
+                            <motion.div
+                                key={stat.label}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 * (index + 1), duration: 0.5 }}
+                            >
+                                <LiquidGlassCard intensity="light" className="p-5" lightMode={true}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm text-[#6B7280]">{stat.label}</p>
+                                            <p
+                                                className="mt-2 text-3xl font-light"
+                                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                                            >
+                                                {stat.value}
+                                            </p>
+                                        </div>
+                                        <div
+                                            className="flex h-10 w-10 items-center justify-center rounded-xl"
+                                            style={{
+                                                background: `${stat.color}15`,
+                                                border: `1px solid ${stat.color}25`,
+                                            }}
+                                        >
+                                            <stat.icon className="h-5 w-5" style={{ color: stat.color }} />
+                                        </div>
+                                    </div>
+                                </LiquidGlassCard>
+                            </motion.div>
+                        ))}
                     </div>
-                </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
+                    >
+                        <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                            <h2
+                                className="mb-6 text-lg font-semibold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Tindakan Cepat
+                            </h2>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {[
+                                    {
+                                        href: lecturer.courses.create.url(),
+                                        icon: Plus,
+                                        title: 'Buat Kelas',
+                                        desc: 'Tambahkan kelas baru',
+                                        color: '#88161c',
+                                    },
+                                    {
+                                        href: lecturer.courses.index.url(),
+                                        icon: BookOpen,
+                                        title: 'Kelola Kelas',
+                                        desc: 'Lihat semua kelas',
+                                        color: '#4A4A4A',
+                                    },
+                                    {
+                                        href: lecturer.courses.index.url(),
+                                        icon: Users,
+                                        title: 'Kelola Grup',
+                                        desc: 'Atur siswa',
+                                        color: '#6B7280',
+                                    },
+                                ].map((action, index) => (
+                                    <motion.a
+                                        key={action.title}
+                                        href={action.href}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.6 + index * 0.1, duration: 0.4 }}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        className="group flex items-center gap-4 rounded-2xl p-4 transition-all"
+                                        style={{
+                                            background: 'rgba(255,255,255,0.5)',
+                                            border: '1px solid rgba(255,255,255,0.6)',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.8)';
+                                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.5)';
+                                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                                        }}
+                                    >
+                                        <div
+                                            className="flex h-12 w-12 items-center justify-center rounded-xl transition-all group-hover:scale-110"
+                                            style={{
+                                                background: `${action.color}10`,
+                                                border: `1px solid ${action.color}20`,
+                                            }}
+                                        >
+                                            <action.icon className="h-6 w-6" style={{ color: action.color }} />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium" style={{ color: '#4A4A4A' }}>
+                                                {action.title}
+                                            </p>
+                                            <p className="text-sm text-[#6B7280]">{action.desc}</p>
+                                        </div>
+                                    </motion.a>
+                                ))}
+                            </div>
+                        </LiquidGlassCard>
+                    </motion.div>
+                </div>
             </div>
         </AppLayout>
     );
