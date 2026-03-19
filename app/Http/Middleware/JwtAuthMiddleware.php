@@ -19,7 +19,7 @@ class JwtAuthMiddleware
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
             
-            return redirect()->route('auth.login')->with('error', 'Please login to continue');
+            return redirect()->route('auth.login.index')->with('error', 'Please login to continue');
         }
 
         // Share user data with all views
