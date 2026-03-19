@@ -116,7 +116,7 @@ export default function StudentReflectionsIndex({ reflections, courses }: Props)
     const { data, setData, post, processing, errors, reset } = useForm({
         course_id: '',
         content: '',
-        type: 'weekly' as 'weekly',
+        type: 'weekly' as const,
     });
 
     const handleSubmit = (e: FormEvent) => {
