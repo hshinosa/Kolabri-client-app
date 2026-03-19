@@ -1,5 +1,6 @@
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
+import { AlertTriangle, ArrowLeft, Info, Lightbulb } from 'lucide-react';
 import { FormEvent, useState, useMemo } from 'react';
 
 import { InputError } from '@/components/ui/input-error';
@@ -9,6 +10,7 @@ import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, Group } from '@/types';
 import student from '@/routes/student';
 import { room as chatRoom } from '@/routes/student/courses/chat';
+import { LiquidGlassCard, PrimaryButton, SecondaryButton, OrganicBlob } from '@/components/Welcome/utils/helpers';
 
 interface ChatSpace {
     id: string;
@@ -43,12 +45,12 @@ const LEVEL_LABELS = {
 };
 
 const LEVEL_COLORS = {
-    mengingat: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
-    memahami: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-    menerapkan: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-    menganalisis: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-    mengevaluasi: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-    mencipta: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    mengingat: 'bg-[rgba(136,22,28,0.08)] text-[#6B7280] border-[rgba(136,22,28,0.12)]',
+    memahami: 'bg-[rgba(136,22,28,0.10)] text-[#88161c] border-[rgba(136,22,28,0.15)]',
+    menerapkan: 'bg-[rgba(136,22,28,0.12)] text-[#88161c] border-[rgba(136,22,28,0.18)]',
+    menganalisis: 'bg-[rgba(136,22,28,0.14)] text-[#88161c] border-[rgba(136,22,28,0.20)]',
+    mengevaluasi: 'bg-[rgba(136,22,28,0.16)] text-[#88161c] border-[rgba(136,22,28,0.22)]',
+    mencipta: 'bg-[rgba(136,22,28,0.18)] text-[#88161c] border-[rgba(136,22,28,0.25)]',
 };
 
 export default function StudentGoalCreate({ course, group, chatSpace }: Props) {
@@ -111,30 +113,45 @@ export default function StudentGoalCreate({ course, group, chatSpace }: Props) {
         return (
             <AppLayout title="Tetapkan Tujuan Pembelajaran" navItems={navItems}>
                 <Head title="Tetapkan Tujuan Pembelajaran" />
-                <div className="mx-auto max-w-3xl">
+                <div className="relative mx-auto max-w-3xl">
+                    <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={250} />
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="card p-8 text-center"
                     >
-                        <div className="mb-4 flex justify-center">
-                            <svg className="h-16 w-16 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                            Belum Ada Grup yang Ditugaskan
-                        </h3>
-                        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                            Anda perlu ditugaskan ke grup sebelum dapat menetapkan tujuan pembelajaran.
-                            Harap tunggu dosen Anda menugaskan Anda ke grup.
-                        </p>
-                        <Link
-                            href={student.courses.show.url({ course: course.id })}
-                            className="btn-primary mt-6 inline-flex"
-                        >
-                            Kembali ke Kelas
-                        </Link>
+                        <LiquidGlassCard intensity="medium" className="p-8 text-center" lightMode={true}>
+                            <div className="mb-4 flex justify-center">
+                                <div 
+                                    className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                                    style={{ 
+                                        background: 'rgba(136,22,28,0.08)', 
+                                        border: '1px solid rgba(136,22,28,0.12)' 
+                                    }}
+                                >
+                                    <AlertTriangle className="h-8 w-8" style={{ color: '#88161c' }} />
+                                </div>
+                            </div>
+                            <h3 
+                                className="text-xl font-semibold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Belum Ada Grup yang Ditugaskan
+                            </h3>
+                            <p className="mt-2 text-[#6B7280]">
+                                Anda perlu ditugaskan ke grup sebelum dapat menetapkan tujuan pembelajaran.
+                                Harap tunggu dosen Anda menugaskan Anda ke grup.
+                            </p>
+                            <Link
+                                href={student.courses.show.url({ course: course.id })}
+                                className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all"
+                                style={{ 
+                                    background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                    boxShadow: '0 8px 32px rgba(136,22,28,0.35)'
+                                }}
+                            >
+                                Kembali ke Kelas
+                            </Link>
+                        </LiquidGlassCard>
                     </motion.div>
                 </div>
             </AppLayout>
@@ -146,29 +163,44 @@ export default function StudentGoalCreate({ course, group, chatSpace }: Props) {
         return (
             <AppLayout title="Tetapkan Tujuan Pembelajaran" navItems={navItems}>
                 <Head title="Tetapkan Tujuan Pembelajaran" />
-                <div className="mx-auto max-w-3xl">
+                <div className="relative mx-auto max-w-3xl">
+                    <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={250} />
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="card p-8 text-center"
                     >
-                        <div className="mb-4 flex justify-center">
-                            <svg className="h-16 w-16 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                            Chat Space Tidak Ditemukan
-                        </h3>
-                        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                            Chat space yang Anda cari tidak ditemukan atau Anda tidak memiliki akses.
-                        </p>
-                        <Link
-                            href={student.courses.chatSpaces.url({ course: course.id })}
-                            className="btn-primary mt-6 inline-flex"
-                        >
-                            Kembali ke Diskusi
-                        </Link>
+                        <LiquidGlassCard intensity="medium" className="p-8 text-center" lightMode={true}>
+                            <div className="mb-4 flex justify-center">
+                                <div 
+                                    className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                                    style={{ 
+                                        background: 'rgba(136,22,28,0.08)', 
+                                        border: '1px solid rgba(136,22,28,0.12)' 
+                                    }}
+                                >
+                                    <AlertTriangle className="h-8 w-8" style={{ color: '#88161c' }} />
+                                </div>
+                            </div>
+                            <h3 
+                                className="text-xl font-semibold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Chat Space Tidak Ditemukan
+                            </h3>
+                            <p className="mt-2 text-[#6B7280]">
+                                Chat space yang Anda cari tidak ditemukan atau Anda tidak memiliki akses.
+                            </p>
+                            <Link
+                                href={student.courses.chatSpaces.url({ course: course.id })}
+                                className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all"
+                                style={{ 
+                                    background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                    boxShadow: '0 8px 32px rgba(136,22,28,0.35)'
+                                }}
+                            >
+                                Kembali ke Diskusi
+                            </Link>
+                        </LiquidGlassCard>
                     </motion.div>
                 </div>
             </AppLayout>
@@ -179,165 +211,220 @@ export default function StudentGoalCreate({ course, group, chatSpace }: Props) {
         <AppLayout title="Tetapkan Tujuan Pembelajaran" navItems={navItems}>
             <Head title="Tetapkan Tujuan Pembelajaran" />
 
-            <div className="mx-auto max-w-3xl space-y-6">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    <Link
-                        href={student.courses.chatSpaces.url({ course: course.id })}
-                        className="mb-4 inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            <div className="relative mx-auto max-w-3xl">
+                {/* Background decorative blobs */}
+                <OrganicBlob className="top-0 -left-20" delay={0} color="rgba(136, 22, 28, 0.04)" size={250} />
+                <OrganicBlob className="top-40 -right-20" delay={-5} color="rgba(136, 22, 28, 0.03)" size={200} />
+
+                <div className="relative space-y-6">
+                    {/* Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
                     >
-                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Kembali ke Sesi Diskusi
-                    </Link>
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                        Tetapkan Tujuan Pembelajaran Anda
-                    </h2>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Untuk chat space: <span className="font-medium">{chatSpace.name}</span>
-                    </p>
-                </motion.div>
+                        <Link
+                            href={student.courses.chatSpaces.url({ course: course.id })}
+                            className="mb-4 inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all"
+                            style={{ 
+                                background: 'rgba(255,255,255,0.6)', 
+                                border: '1px solid rgba(255,255,255,0.8)',
+                                color: '#6B7280'
+                            }}
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            Kembali ke Sesi Diskusi
+                        </Link>
+                        <h2 
+                            className="text-2xl font-bold"
+                            style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                        >
+                            Tetapkan Tujuan Pembelajaran Anda
+                        </h2>
+                        <p className="mt-1 text-sm text-[#6B7280]">
+                            Untuk chat space: <span className="font-medium" style={{ color: '#4A4A4A' }}>{chatSpace.name}</span>
+                        </p>
+                    </motion.div>
 
-                {/* Info Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="card bg-primary-50 p-4 dark:bg-primary-900/20"
-                >
-                    <div className="flex gap-3">
-                        <svg className="h-5 w-5 flex-shrink-0 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div className="text-sm text-primary-800 dark:text-primary-200">
-                            <p className="font-medium">Apa yang membuat tujuan pembelajaran yang baik?</p>
-                            <ul className="mt-2 list-inside list-disc space-y-1 text-primary-700 dark:text-primary-300">
-                                <li>Mulai dengan kata kerja aksi dari Taksonomi Bloom</li>
-                                <li>Jadilah spesifik tentang apa yang ingin Anda pelajari</li>
-                                <li>Buatlah dapat diukur sehingga Anda tahu kapan Anda telah mencapainya</li>
-                                <li>Jaga agar relevan dengan topik diskusi di chat space ini</li>
-                            </ul>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Action Verb Picker */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="card p-6"
-                >
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                        Pilih Kata Kerja Aksi
-                    </h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Klik pada kata kerja untuk memulai tujuan Anda. Tingkat yang lebih tinggi mendorong pembelajaran yang lebih dalam.
-                    </p>
-                    <div className="mt-4 space-y-4">
-                        {Object.entries(ACTION_VERBS).map(([level, verbs]) => (
-                            <div key={level}>
-                                <div className="mb-2 flex items-center gap-2">
-                                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${LEVEL_COLORS[level as keyof typeof LEVEL_COLORS]}`}>
-                                        {LEVEL_LABELS[level as keyof typeof LEVEL_LABELS]}
-                                    </span>
+                    {/* Info Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                    >
+                        <LiquidGlassCard intensity="light" className="p-5" lightMode={true}>
+                            <div className="flex gap-3">
+                                <div 
+                                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                                    style={{ 
+                                        background: 'rgba(136,22,28,0.08)', 
+                                        border: '1px solid rgba(136,22,28,0.12)' 
+                                    }}
+                                >
+                                    <Info className="h-5 w-5" style={{ color: '#88161c' }} />
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {verbs.map((verb) => (
-                                        <button
-                                            key={verb}
-                                            type="button"
-                                            onClick={() => handleVerbClick(verb)}
-                                            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-all hover:scale-105 active:scale-95 ${
-                                                selectedVerb === verb
-                                                    ? 'border-primary-500 bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                                                    : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600'
-                                            }`}
+                                <div className="text-sm" style={{ color: '#4A4A4A' }}>
+                                    <p className="font-medium">Apa yang membuat tujuan pembelajaran yang baik?</p>
+                                    <ul className="mt-2 list-inside list-disc space-y-1 text-[#6B7280]">
+                                        <li>Mulai dengan kata kerja aksi dari Taksonomi Bloom</li>
+                                        <li>Jadilah spesifik tentang apa yang ingin Anda pelajari</li>
+                                        <li>Buatlah dapat diukur sehingga Anda tahu kapan Anda telah mencapainya</li>
+                                        <li>Jaga agar relevan dengan topik diskusi di chat space ini</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </LiquidGlassCard>
+                    </motion.div>
+
+                    {/* Action Verb Picker */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                            <h3 
+                                className="text-lg font-semibold"
+                                style={{ color: '#4A4A4A', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                            >
+                                Pilih Kata Kerja Aksi
+                            </h3>
+                            <p className="mt-1 text-sm text-[#6B7280]">
+                                Klik pada kata kerja untuk memulai tujuan Anda. Tingkat yang lebih tinggi mendorong pembelajaran yang lebih dalam.
+                            </p>
+                            <div className="mt-4 space-y-4">
+                                {Object.entries(ACTION_VERBS).map(([level, verbs]) => (
+                                    <div key={level}>
+                                        <div className="mb-2 flex items-center gap-2">
+                                            <span 
+                                                className={`rounded-lg px-2.5 py-1 text-xs font-medium border ${LEVEL_COLORS[level as keyof typeof LEVEL_COLORS]}`}
+                                            >
+                                                {LEVEL_LABELS[level as keyof typeof LEVEL_LABELS]}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {verbs.map((verb) => (
+                                                <button
+                                                    key={verb}
+                                                    type="button"
+                                                    onClick={() => handleVerbClick(verb)}
+                                                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all hover:scale-105 active:scale-95 ${
+                                                        selectedVerb === verb
+                                                            ? 'border-[rgba(136,22,28,0.25)] bg-[rgba(136,22,28,0.12)] text-[#88161c]'
+                                                            : 'border-[rgba(0,0,0,0.08)] bg-white/80 text-[#4A4A4A] hover:border-[rgba(136,22,28,0.15)] hover:bg-[rgba(136,22,28,0.05)]'
+                                                    }`}
+                                                >
+                                                    {verb.charAt(0).toUpperCase() + verb.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </LiquidGlassCard>
+                    </motion.div>
+
+                    {/* Goal Form */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <InputLabel htmlFor="content" required>
+                                            <span style={{ color: '#4A4A4A' }}>Tujuan Pembelajaran Anda</span>
+                                        </InputLabel>
+                                        {detectedLevel && (
+                                            <span 
+                                                className="rounded-lg px-2.5 py-1 text-xs font-medium border"
+                                                style={{
+                                                    background: 'rgba(136,22,28,0.10)',
+                                                    color: '#88161c',
+                                                    borderColor: 'rgba(136,22,28,0.15)'
+                                                }}
+                                            >
+                                                Tingkat: {LEVEL_LABELS[detectedLevel]}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <textarea
+                                        id="content"
+                                        value={data.content}
+                                        onChange={(e) => setData('content', e.target.value)}
+                                        className="mt-2 w-full min-h-[120px] rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white/80 px-4 py-3 text-sm text-[#374151] placeholder-[#9CA3AF] outline-none transition-all focus:border-[rgba(136,22,28,0.25)] focus:bg-white focus:ring-2 focus:ring-[rgba(136,22,28,0.08)]"
+                                        placeholder="misalnya, Analisis pendekatan berbeda untuk normalisasi database dan evaluasi mana yang paling sesuai untuk aplikasi e-commerce"
+                                        rows={4}
+                                    />
+                                    <InputError message={errors.content} />
+                                    <p className="mt-1 text-xs text-[#6B7280]">
+                                        {data.content.length}/500 karakter
+                                    </p>
+                                </div>
+
+                                {/* Example Goals */}
+                                <div 
+                                    className="rounded-2xl border p-4"
+                                    style={{ 
+                                        background: 'rgba(255,255,255,0.55)', 
+                                        borderColor: 'rgba(255,255,255,0.6)' 
+                                    }}
+                                >
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <Lightbulb className="h-4 w-4" style={{ color: '#88161c' }} />
+                                        <p 
+                                            className="text-sm font-medium"
+                                            style={{ color: '#4A4A4A' }}
                                         >
-                                            {verb.charAt(0).toUpperCase() + verb.slice(1)}
-                                        </button>
-                                    ))}
+                                            Contoh Tujuan:
+                                        </p>
+                                    </div>
+                                    <ul className="space-y-2 text-sm text-[#6B7280]">
+                                        <li className="flex items-start gap-2">
+                                            <span style={{ color: '#88161c' }}>•</span>
+                                            <span>"<strong style={{ color: '#4A4A4A' }}>Membandingkan</strong> berbagai algoritma pengurutan dan menjelaskan kompleksitas waktunya"</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span style={{ color: '#88161c' }}>•</span>
+                                            <span>"<strong style={{ color: '#4A4A4A' }}>Merancang</strong> RESTful API untuk aplikasi blog dengan autentikasi yang tepat"</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span style={{ color: '#88161c' }}>•</span>
+                                            <span>"<strong style={{ color: '#4A4A4A' }}>Mengevaluasi</strong> kelebihan dan kekurangan SQL vs NoSQL untuk proyek kami"</span>
+                                        </li>
+                                    </ul>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
 
-                {/* Goal Form */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="card p-6"
-                >
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <div className="flex items-center justify-between">
-                                <InputLabel htmlFor="content" required>
-                                    Tujuan Pembelajaran Anda
-                                </InputLabel>
-                                {detectedLevel && (
-                                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${LEVEL_COLORS[detectedLevel]}`}>
-                                        Tingkat: {LEVEL_LABELS[detectedLevel]}
-                                    </span>
-                                )}
-                            </div>
-                            <textarea
-                                id="content"
-                                value={data.content}
-                                onChange={(e) => setData('content', e.target.value)}
-                                className="input-field mt-1 min-h-[120px]"
-                                placeholder="misalnya, Analisis pendekatan berbeda untuk normalisasi database dan evaluasi mana yang paling sesuai untuk aplikasi e-commerce"
-                                rows={4}
-                            />
-                            <InputError message={errors.content} />
-                            <p className="mt-1 text-xs text-zinc-500">
-                                {data.content.length}/500 karakter
-                            </p>
-                        </div>
-
-                        {/* Example Goals */}
-                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                Contoh Tujuan:
-                            </p>
-                            <ul className="mt-2 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-                                <li className="flex items-start gap-2">
-                                    <span className="text-accent-500">•</span>
-                                    <span>"<strong>Membandingkan</strong> berbagai algoritma pengurutan dan menjelaskan kompleksitas waktunya"</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="text-accent-500">•</span>
-                                    <span>"<strong>Merancang</strong> RESTful API untuk aplikasi blog dengan autentikasi yang tepat"</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="text-accent-500">•</span>
-                                    <span>"<strong>Mengevaluasi</strong> kelebihan dan kekurangan SQL vs NoSQL untuk proyek kami"</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                            <Link
-                                href={student.courses.chatSpaces.url({ course: course.id })}
-                                className="btn-secondary flex-1"
-                            >
-                                Batal
-                            </Link>
-                            <button
-                                type="submit"
-                                disabled={processing || !data.content.trim()}
-                                className="btn-primary flex-1"
-                            >
-                                {processing ? 'Menetapkan Tujuan...' : 'Tetapkan Tujuan & Mulai Diskusi'}
-                            </button>
-                        </div>
-                    </form>
-                </motion.div>
+                                <div className="flex gap-3 pt-4">
+                                    <Link
+                                        href={student.courses.chatSpaces.url({ course: course.id })}
+                                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-all"
+                                        style={{ 
+                                            background: 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%)',
+                                            backdropFilter: 'blur(16px) saturate(180%)',
+                                            border: '1px solid rgba(255,255,255,0.5)',
+                                            color: '#4A4A4A'
+                                        }}
+                                    >
+                                        Batal
+                                    </Link>
+                                    <button
+                                        type="submit"
+                                        disabled={processing || !data.content.trim()}
+                                        className="flex-1 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                                        style={{ 
+                                            background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
+                                            boxShadow: '0 8px 32px rgba(136,22,28,0.35)'
+                                        }}
+                                    >
+                                        {processing ? 'Menetapkan Tujuan...' : 'Tetapkan Tujuan & Mulai Diskusi'}
+                                    </button>
+                                </div>
+                            </form>
+                        </LiquidGlassCard>
+                    </motion.div>
+                </div>
             </div>
         </AppLayout>
     );
