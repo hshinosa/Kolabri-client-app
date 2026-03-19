@@ -37,7 +37,7 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'name' => config('app.name', 'CoRegula'),
+            'name' => config('app.name', 'Kolabri'),
             'auth' => [
                 'user' => session('user'),
                 'token' => session('jwt'),

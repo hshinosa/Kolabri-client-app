@@ -744,7 +744,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
 
     const getSenderDisplayName = (message: DisplayMessage): string => {
         if (isAIMessage(message)) return 'Asisten AI';
-        if (isBotMessage(message)) return 'Bot CoRegula';
+        if (isBotMessage(message)) return 'Bot Kolabri';
         return message.sender_name;
     };
 

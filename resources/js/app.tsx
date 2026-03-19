@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 
-const appName = import.meta.env.VITE_APP_NAME || 'CoRegula';
+const appName = import.meta.env.VITE_APP_NAME || 'Kolabri';
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
