@@ -1,10 +1,10 @@
-# CoRegula Client App
+# Kolabri Client App
 
-Frontend application for CoRegula - AI-Powered Collaborative Learning Platform. Built with Laravel 12, React 19, TypeScript, and Tailwind CSS.
+Frontend application for Kolabri - AI-Powered Collaborative Learning Platform. Built with Laravel 12, React 19, TypeScript, and Tailwind CSS.
 
 ## 🎯 Purpose
 
-CoRegula is an educational platform designed for **Socially Shared Regulated Learning (SSRL)**. It enables:
+Kolabri is an educational platform designed for **Socially Shared Regulated Learning (SSRL)**. It enables:
 - **Students**: Collaborative group learning with AI-powered guidance
 - **Lecturers**: Monitor student progress, set learning goals, manage knowledge bases
 - **AI Assistant**: Context-aware responses using RAG (Retrieval-Augmented Generation)
@@ -59,7 +59,7 @@ php artisan key:generate
 **Key .env variables:**
 
 ```env
-APP_NAME=CoRegula
+APP_NAME=Kolabri
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://localhost:8000
@@ -67,7 +67,7 @@ APP_URL=http://localhost:8000
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=coregula
+DB_DATABASE=kolabri-db
 DB_USERNAME=postgres
 DB_PASSWORD=your_password
 
@@ -79,17 +79,17 @@ VITE_SOCKET_URL=http://localhost:3000
 
 ⚠️ **CRITICAL: Database Sharing with Core-API**
 
-This project shares the PostgreSQL database with **CoRegula Core API** (Node.js/Prisma). The `users` table and all business logic tables are managed by Core-API, not Laravel.
+This project shares the PostgreSQL database with **Kolabri Core API** (Node.js/Prisma). The `users` table and all business logic tables are managed by Core-API, not Laravel.
 
 **Migration Order (MUST FOLLOW):**
 
 ```bash
 # Step 1: Run Core-API migrations FIRST (creates users, courses, etc.)
-cd ../CoRegula-core-api
+cd ../Kolabri-core-api
 npx prisma migrate deploy
 
 # Step 2: Then run Laravel migrations (creates sessions, cache, jobs only)
-cd ../CoRegula-client-app
+cd ../Kolabri-client-app
 php artisan migrate
 ```
 
@@ -283,7 +283,7 @@ Students and lecturers can upload PDFs to the knowledge base:
 
 ```env
 # App Config
-APP_NAME=CoRegula
+APP_NAME=Kolabri
 APP_ENV=local|production
 APP_KEY=base64:...
 APP_URL=http://localhost:8000
@@ -293,7 +293,7 @@ APP_DEBUG=true|false
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=coregula
+DB_DATABASE=kolabri-db
 DB_USERNAME=postgres
 DB_PASSWORD=your_password
 
@@ -302,7 +302,7 @@ VITE_API_URL=http://localhost:3000
 VITE_SOCKET_URL=http://localhost:3000
 
 # Optional: MongoDB for chat logs
-MONGODB_URI=mongodb://localhost:27017/coregula
+MONGODB_URI=mongodb://localhost:27017/kolabri
 
 # Mail (optional)
 MAIL_DRIVER=log
@@ -329,8 +329,8 @@ php artisan route:cache
 
 Build and run in Docker:
 ```bash
-docker build -t coregula-client .
-docker run -p 8080:80 -e APP_KEY=base64:... coregula-client
+docker build -t kolabri-client .
+docker run -p 8080:80 -e APP_KEY=base64:... kolabri-client
 ```
 
 Or use docker-compose (recommended):
@@ -342,7 +342,7 @@ docker-compose up -d client-app-php client-app-web
 
 ### Shared Database Setup
 
-This application uses a **shared PostgreSQL database** with CoRegula Core-API:
+This application uses a **shared PostgreSQL database** with Kolabri Core-API:
 
 | Component | Managed By | Tables |
 |-----------|-----------|--------|
@@ -432,12 +432,12 @@ php artisan test --coverage
 **Fix:**
 ```bash
 # 1. Reset database and apply Core-API migrations first
-cd ../CoRegula-core-api
+cd ../Kolabri-core-api
 npx prisma db execute --file prisma/reset_for_prisma.sql
 npx prisma migrate deploy
 
 # 2. Then run Laravel migrations
-cd ../CoRegula-client-app
+cd ../Kolabri-client-app
 php artisan migrate
 ```
 
@@ -496,8 +496,8 @@ npm run dev
 
 ## 📄 License
 
-MIT License - CoRegula Project
+MIT License - Kolabri Project
 
 ## 👥 Support
 
-For issues and feature requests, please open an issue in the main CoRegula repository.
+For issues and feature requests, please open an issue in the main Kolabri repository.

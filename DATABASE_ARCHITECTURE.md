@@ -1,11 +1,11 @@
-# CoRegula Database Architecture
+# Kolabri Database Architecture
 
 ## Overview
 
-CoRegula menggunakan **shared database architecture** dimana 2 aplikasi berbagi database PostgreSQL yang sama:
+Kolabri menggunakan **shared database architecture** dimana 2 aplikasi berbagi database PostgreSQL yang sama:
 
-1. **CoRegula Core API** (Node.js + Prisma) - Backend utama
-2. **CoRegula Client App** (Laravel + React) - Frontend dengan backend Laravel
+1. **Kolabri Core API** (Node.js + Prisma) - Backend utama
+2. **Kolabri Client App** (Laravel + React) - Frontend dengan backend Laravel
 
 ## Database Configuration
 
@@ -144,11 +144,11 @@ class User extends Model
 
 ```bash
 # 1. Core API (Prisma)
-cd CoRegula-core-api
+cd Kolabri-core-api
 npx prisma migrate deploy
 
 # 2. Client App (Laravel) - skips users table
-cd ../CoRegula-client-app
+cd ../Kolabri-client-app
 php artisan migrate
 ```
 
@@ -173,7 +173,7 @@ php artisan migrate
 **Fix:**
 1. Run the fix script:
    ```bash
-   cd CoRegula-core-api
+   cd Kolabri-core-api
    npx prisma db execute --schema prisma/schema.prisma --file prisma/fix_role_column.sql
    ```
 

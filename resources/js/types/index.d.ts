@@ -1,5 +1,5 @@
 /* ============================================
- * CoRegula TypeScript Definitions
+ * Kolabri TypeScript Definitions
  * ============================================ */
 
 // ============ User & Auth Types ============

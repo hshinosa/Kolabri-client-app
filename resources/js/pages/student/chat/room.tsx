@@ -938,8 +938,8 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
     const getSenderDisplayName = (message: DisplayMessage): string => {
         if (isAIMessage(message)) return 'Asisten AI';
-        if (isBotMessage(message)) return 'Bot CoRegula';
-        if (isSystemMessage(message)) return 'CoRegula';
+        if (isBotMessage(message)) return 'Bot Kolabri';
+        if (isSystemMessage(message)) return 'Kolabri';
         return message.sender_name;
     };
 

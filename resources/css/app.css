@@ -7,7 +7,7 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
 @theme {
-    /* CoRegula Academic Design System */
+    /* Kolabri Academic Design System */
     --font-sans: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, sans-serif;
     --font-heading: 'Crimson Pro', Georgia, 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
