@@ -20,45 +20,40 @@ class UserManagementController extends Controller
 
     public function index(Request $request)
     {
+        $users = [];
+        $pagination = [
+            'page' => (int) $request->query('page', 1),
+            'limit' => (int) $request->query('limit', 20),
+            'total' => 0,
+            'totalPages' => 1,
+        ];
+
         try {
             $response = $this->apiRequest()->get(
                 $this->apiUrl() . '/api/admin/users',
                 $request->query()
             );
 
-            $payload = $response->json();
-
-            if (!$response->successful()) {
-                return response()->json($payload, $response->status());
+            if ($response->successful()) {
+                $payload = $response->json();
+                $users = $payload['data'] ?? [];
+                $pagination = $payload['meta'] ?? $pagination;
             }
-
-            $responsePayload = [
-                'users' => $payload['data'] ?? [],
-                'filters' => $request->query(),
-                'pagination' => $payload['meta'] ?? [
-                    'page' => (int) $request->query('page', 1),
-                    'limit' => (int) $request->query('limit', 20),
-                    'total' => is_array($payload['data'] ?? null) ? count($payload['data']) : 0,
-                    'totalPages' => 1,
-                ],
-                'message' => $payload['message'] ?? null,
-            ];
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => $responsePayload,
-                ]);
-            }
-
-            return Inertia::render('Admin/UserManagement', $responsePayload);
         } catch (\Throwable $e) {
-            return response()->json([
-                'error' => [
-                    'message' => 'Failed to fetch users',
-                    'details' => $e->getMessage(),
-                ],
-            ], 500);
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch users', ['error' => $e->getMessage()]);
         }
+
+        $responsePayload = [
+            'users' => $users,
+            'filters' => $request->query(),
+            'pagination' => $pagination,
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $responsePayload]);
+        }
+
+        return Inertia::render('admin/user-management', $responsePayload);
     }
 
     public function show($id)

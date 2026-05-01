@@ -65,10 +65,8 @@ test('Can navigate to templates', async ({ page }) => {
     await page.goto('/admin/master-data');
     await page.waitForLoadState('networkidle');
 
-    const link = page.getByRole('link', { name: /template/i }).first();
-    const hasLink = await link.isVisible().catch(() => false);
-    if (!hasLink) test.skip(true, 'Templates link not found');
-
+    const link = page.locator('a[href*="template"], button:has-text("Template"), [role="tab"]:has-text("Template")').first();
+    await expect(link).toBeVisible();
     await link.click();
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/\/admin\/templates/);

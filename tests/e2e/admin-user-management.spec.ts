@@ -56,13 +56,10 @@ test('Create user modal opens', async ({ page }) => {
     await page.goto('/admin/users');
     await page.waitForLoadState('networkidle');
 
-    const btn = page.getByRole('button', { name: /create|tambah|add|new/i }).first();
-    const hasBtn = await btn.isVisible().catch(() => false);
-    if (!hasBtn) test.skip(true, 'Create button not found (page may not have rendered)');
-
-    await btn.click();
+    await page.getByRole('button', { name: /create|tambah|add|new/i }).first().click();
     await page.waitForTimeout(500);
-    await expect(page.locator('input[name="name"], input[name="email"], #name, #email').first()).toBeVisible();
+    await expect(page.getByPlaceholder(/full name/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/domain\.com/i)).toBeVisible();
 });
 
 test('Bulk operation checkboxes exist', async ({ page }) => {

@@ -20,8 +20,17 @@ class MasterDataController extends Controller
 
     public function index(Request $request)
     {
+        $tab = $request->query('tab', 'active');
+        $courses = [];
+        $lecturers = [];
+        $pagination = [
+            'page' => (int) $request->query('page', 1),
+            'limit' => (int) $request->query('limit', 10),
+            'total' => 0,
+            'totalPages' => 1,
+        ];
+
         try {
-            $tab = $request->query('tab', 'active');
             $endpoint = $tab === 'archived'
                 ? '/api/admin/courses/archived'
                 : '/api/admin/courses';
@@ -31,89 +40,79 @@ class MasterDataController extends Controller
                 $request->query()
             );
 
-            $coursesPayload = $coursesResponse->json();
-
-            if (!$coursesResponse->successful()) {
-                return response()->json($coursesPayload, $coursesResponse->status());
+            if ($coursesResponse->successful()) {
+                $coursesPayload = $coursesResponse->json();
+                $courseData = $coursesPayload['data'] ?? [];
+                $courses = $courseData['courses'] ?? $courseData;
+                $pagination = $courseData['pagination'] ?? $coursesPayload['pagination'] ?? $pagination;
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch courses', ['error' => $e->getMessage()]);
+        }
 
+        try {
             $lecturersResponse = $this->apiRequest()->get(
                 $this->apiUrl() . '/api/admin/users',
-                [
-                    'role' => 'lecturer',
-                    'limit' => 100,
-                ]
+                ['role' => 'lecturer', 'limit' => 100]
             );
 
-            $lecturersPayload = $lecturersResponse->json();
-            $courseData = $coursesPayload['data'] ?? [];
-
-            $responsePayload = [
-                'courses' => $courseData['courses'] ?? $courseData,
-                'pagination' => $courseData['pagination'] ?? $coursesPayload['pagination'] ?? [
-                    'page' => (int) $request->query('page', 1),
-                    'limit' => (int) $request->query('limit', 10),
-                    'total' => is_array($courseData['courses'] ?? $courseData) ? count($courseData['courses'] ?? $courseData) : 0,
-                    'totalPages' => 1,
-                ],
-                'filters' => [
-                    'search' => $request->query('search'),
-                    'ownerId' => $request->query('ownerId'),
-                ],
-                'tab' => $tab,
-                'lecturers' => $lecturersPayload['data']['users'] ?? $lecturersPayload['data'] ?? [],
-                'message' => $coursesPayload['message'] ?? null,
-            ];
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'data' => $responsePayload,
-                ]);
+            if ($lecturersResponse->successful()) {
+                $lecturersPayload = $lecturersResponse->json();
+                $lecturers = $lecturersPayload['data']['users'] ?? $lecturersPayload['data'] ?? [];
             }
-
-            return Inertia::render('admin/master-data', $responsePayload);
         } catch (\Throwable $e) {
-            return response()->json([
-                'error' => [
-                    'message' => 'Failed to fetch courses',
-                    'details' => $e->getMessage(),
-                ],
-            ], 500);
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch lecturers', ['error' => $e->getMessage()]);
         }
+
+        $responsePayload = [
+            'courses' => $courses,
+            'pagination' => $pagination,
+            'filters' => [
+                'search' => $request->query('search'),
+                'ownerId' => $request->query('ownerId'),
+            ],
+            'tab' => $tab,
+            'lecturers' => $lecturers,
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $responsePayload]);
+        }
+
+        return Inertia::render('admin/master-data', $responsePayload);
     }
 
     public function templatesPage()
     {
+        $templates = [];
+        $lecturers = [];
+
         try {
             $templatesResponse = $this->apiRequest()->get($this->apiUrl() . '/api/admin/course-templates');
-            $templatesPayload = $templatesResponse->json();
-
-            if (!$templatesResponse->successful()) {
-                return response()->json($templatesPayload, $templatesResponse->status());
+            if ($templatesResponse->successful()) {
+                $templates = $templatesResponse->json('data') ?? [];
             }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch templates', ['error' => $e->getMessage()]);
+        }
 
+        try {
             $lecturersResponse = $this->apiRequest()->get(
                 $this->apiUrl() . '/api/admin/users',
-                [
-                    'role' => 'lecturer',
-                    'limit' => 100,
-                ]
+                ['role' => 'lecturer', 'limit' => 100]
             );
-
-            $lecturersPayload = $lecturersResponse->json();
-
-            return Inertia::render('admin/templates', [
-                'templates' => $templatesPayload['data'] ?? [],
-                'lecturers' => $lecturersPayload['data']['users'] ?? $lecturersPayload['data'] ?? [],
-            ]);
+            if ($lecturersResponse->successful()) {
+                $lecturersPayload = $lecturersResponse->json();
+                $lecturers = $lecturersPayload['data']['users'] ?? $lecturersPayload['data'] ?? [];
+            }
         } catch (\Throwable $e) {
-            return response()->json([
-                'error' => [
-                    'message' => 'Failed to fetch templates',
-                    'details' => $e->getMessage(),
-                ],
-            ], 500);
+            \Illuminate\Support\Facades\Log::warning('Failed to fetch lecturers for templates', ['error' => $e->getMessage()]);
         }
+
+        return Inertia::render('admin/templates', [
+            'templates' => $templates,
+            'lecturers' => $lecturers,
+        ]);
     }
 
     public function show($id)

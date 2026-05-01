@@ -27,16 +27,9 @@ test('Navigation sidebar visible', async ({ page }) => {
 test('Can navigate to user management', async ({ page }) => {
     await page.goto('/admin/dashboard');
     const link = page.locator('a[href*="/admin/users"]').first();
-    const hasLink = await link.isVisible().catch(() => false);
-    if (!hasLink) test.skip(true, 'User management link not found in sidebar');
-
+    await expect(link).toBeVisible();
     await link.click();
     await page.waitForLoadState('networkidle');
-
-    const url = page.url();
-    if (!url.includes('/admin/users')) {
-        test.skip(true, 'User management page navigation failed (API dependency)');
-    }
     await expect(page).toHaveURL(/\/admin\/users/);
 });
 
