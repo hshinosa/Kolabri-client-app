@@ -10,7 +10,7 @@ export interface AiMessage {
     created_at: string;
 }
 
-export async function fetchChatMessages(chatId: string, token: string): Promise<AiMessage[]> {
+export async function fetchChatMessages(chatId: string): Promise<AiMessage[]> {
     try {
         const response = await axios.get<{ data: AiMessage[] }>(
             `/student/ai-chat/${chatId}/messages`,

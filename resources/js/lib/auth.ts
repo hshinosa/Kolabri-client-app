@@ -111,7 +111,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         onTokenRefreshed(accessToken);
         
         return accessToken;
-    } catch (error) {
+    } catch {
         authStorage.clearTokens();
         window.location.href = '/login';
         return null;

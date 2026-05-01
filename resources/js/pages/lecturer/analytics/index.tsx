@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import {
     Activity,
@@ -17,7 +17,7 @@ import { LiquidGlassCard, OrganicBlob, SecondaryButton } from '@/components/Welc
 import { useLecturerNav } from '@/components/navigation/lecturer-nav';
 import AppLayout from '@/layouts/app-layout';
 import lecturer from '@/routes/lecturer';
-import { Course, SharedData } from '@/types';
+import { Course } from '@/types';
 import { getAuthToken } from '@/lib/getAuthToken';
 
 interface GroupAnalytics {
@@ -154,7 +154,6 @@ const getEngagementStyle = (type: string) => {
 };
 
 export default function CourseAnalytics({ course, analytics }: Props) {
-    const { auth } = usePage<SharedData>().props;
     const [jwtToken, setJwtToken] = useState('');
     const summary = analytics?.summary ?? defaultSummary;
     const groups = useMemo(() => analytics?.groups ?? [], [analytics?.groups]);

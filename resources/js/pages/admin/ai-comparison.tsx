@@ -66,7 +66,7 @@ export default function AdminAiComparisonPage() {
             setComparisonId(response.data.data.comparisonId);
             setResults(response.data.data.results);
             toast.success('Perbandingan model berhasil dijalankan.');
-        } catch (error) {
+        } catch {
             toast.error('Gagal menjalankan perbandingan model AI.');
         } finally {
             setProcessing(false);

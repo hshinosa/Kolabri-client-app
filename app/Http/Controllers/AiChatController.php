@@ -51,14 +51,7 @@ class AiChatController extends Controller
                 $activeChatResponse = $this->apiRequest()->get($this->apiUrl() . "/api/ai-chats/{$chatId}");
                 if ($activeChatResponse->successful()) {
                     $chatData = $activeChatResponse->json('data');
-                    $activeChat = [
-                        'id' => $chatData['id'],
-                        'title' => $chatData['title'],
-                        'createdAt' => $chatData['createdAt'] ?? $chatData['created_at'] ?? null,
-                        'updatedAt' => $chatData['updatedAt'] ?? $chatData['updated_at'] ?? null,
-                        'created_at' => $chatData['createdAt'] ?? $chatData['created_at'] ?? null,
-                        'updated_at' => $chatData['updatedAt'] ?? $chatData['updated_at'] ?? null,
-                    ];
+                    $activeChat = $this->normalizeChat($chatData);
                 }
             }
         } catch (\Exception $e) {
@@ -111,9 +104,13 @@ class AiChatController extends Controller
                                 'content' => $messageResponse->json('message', 'Chat berhasil dibuat, tetapi pesan pertama gagal dikirim.'),
                             ]);
                     }
+
+                    return redirect()->route('student.ai-chat.show', $chat['id'])
+                        ->with('success', 'Chat baru dibuat dan pesan pertama berhasil dikirim!');
                 }
 
-                return redirect()->route('student.ai-chat.show', $chat['id']);
+                return redirect()->route('student.ai-chat.show', $chat['id'])
+                    ->with('success', 'Chat baru berhasil dibuat!');
             }
 
             if ($request->wantsJson()) {

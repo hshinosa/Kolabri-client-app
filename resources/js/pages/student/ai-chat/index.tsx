@@ -221,7 +221,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                         accumulated += parsed.content;
                         onChunk(accumulated);
                     }
-                } catch {}
+                } catch { /* skip malformed SSE chunks */ }
             }
         }
     };

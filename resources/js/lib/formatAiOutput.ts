@@ -32,7 +32,7 @@ function looksLikeListItem(line: string): boolean {
     const trimmed = line.trim();
     if (!trimmed) return false;
     if (trimmed.length > 80) return false;
-    if (/^[•·\-\*]\s/.test(trimmed)) return true;
+    if (/^[•·\-*]\s/.test(trimmed)) return true;
     if (trimmed.endsWith(':')) return false;
     if (/[.!?]$/.test(trimmed)) return false;
     return true;
