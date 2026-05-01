@@ -99,7 +99,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
 
         setIsLoadingMessages(true);
         setFetchError(null);
-        fetchChatMessages(activeChat.id, jwtToken)
+        fetchChatMessages(activeChat.id)
             .then(setLoadedMessages)
             .catch(err => setFetchError(err.message))
             .finally(() => setIsLoadingMessages(false));
@@ -612,7 +612,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                 if (activeChat?.id && jwtToken) {
                                                     setFetchError(null);
                                                     setIsLoadingMessages(true);
-                                                    fetchChatMessages(activeChat.id, jwtToken)
+                                                    fetchChatMessages(activeChat.id)
                                                         .then(setLoadedMessages)
                                                         .catch(err => setFetchError(err.message))
                                                         .finally(() => setIsLoadingMessages(false));
