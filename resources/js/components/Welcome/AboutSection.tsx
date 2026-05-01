@@ -64,6 +64,7 @@ export default function AboutSection({ lightMode }: Props) {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true, margin: '-60px' }}
                                 transition={{ duration: 0.6, delay: item.delay, ease: [0.25, 0.1, 0.25, 1] }}
+                                className="h-full"
                             >
                                 <LiquidGlassCard className="h-full p-8" intensity="light" lightMode={lightMode}>
                                     <div

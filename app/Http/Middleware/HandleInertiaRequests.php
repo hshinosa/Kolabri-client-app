@@ -40,7 +40,6 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name', 'Kolabri'),
             'auth' => [
                 'user' => session('user'),
-                'token' => session('jwt'),
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

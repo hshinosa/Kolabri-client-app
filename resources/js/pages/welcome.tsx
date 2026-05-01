@@ -8,7 +8,10 @@ export default function Welcome() {
     const [activeSection, setActiveSection] = useState<string>('');
     const [darkMode, setDarkMode] = useState(() => {
         if (typeof window !== 'undefined') {
-            return localStorage.getItem('kolabri-dark') === 'true';
+            return (
+                localStorage.getItem('kolabri_theme') === 'dark' ||
+                localStorage.getItem('kolabri-dark') === 'true'
+            );
         }
         return false;
     });
@@ -23,6 +26,7 @@ export default function Welcome() {
         }
         document.body.style.overflowX = 'hidden';
         localStorage.setItem('kolabri-dark', darkMode ? 'true' : 'false');
+        localStorage.setItem('kolabri_theme', darkMode ? 'dark' : 'light');
     }, [darkMode]);
 
     useEffect(() => {

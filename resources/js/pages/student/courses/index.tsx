@@ -4,7 +4,6 @@ import { FormEvent, useState } from 'react';
 import { BookOpen, Plus, X } from 'lucide-react';
 
 import { InputError } from '@/components/ui/input-error';
-import { InputLabel } from '@/components/ui/input-label';
 import AppLayout from '@/layouts/app-layout';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course } from '@/types';
@@ -52,10 +51,12 @@ export default function StudentCoursesIndex({ courses }: Props) {
                                 Mata kuliah dan kelompok yang Anda ikuti
                             </p>
                         </div>
-                        <PrimaryButton onClick={() => setShowJoinModal(true)}>
-                            <Plus className="h-4 w-4" />
-                            Gabung Mata Kuliah
-                        </PrimaryButton>
+                        {courses.length > 0 && (
+                            <PrimaryButton onClick={() => setShowJoinModal(true)}>
+                                <Plus className="h-4 w-4" />
+                                Gabung Mata Kuliah
+                            </PrimaryButton>
+                        )}
                     </div>
                 </LiquidGlassCard>
 
@@ -66,15 +67,15 @@ export default function StudentCoursesIndex({ courses }: Props) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <LiquidGlassCard intensity="medium" className="flex flex-col items-center justify-center py-16 text-center" lightMode={true}>
+                        <LiquidGlassCard intensity="light" className="flex flex-col items-center justify-center py-12 text-center" lightMode={true}>
                             <div 
-                                className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+                                className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
                                 style={{
                                     background: 'rgba(136,22,28,0.08)',
                                     border: '1px solid rgba(136,22,28,0.12)',
                                 }}
                             >
-                                <BookOpen className="h-8 w-8" style={{ color: '#88161c' }} />
+                                <BookOpen className="h-7 w-7" style={{ color: '#88161c' }} />
                             </div>
                             <h3 
                                 className="text-lg font-semibold"
@@ -82,10 +83,10 @@ export default function StudentCoursesIndex({ courses }: Props) {
                             >
                                 Belum ada mata kuliah
                             </h3>
-                            <p className="mt-2 max-w-sm text-sm text-[#6B7280]">
+                            <p className="mt-1.5 max-w-sm text-sm text-[#6B7280]">
                                 Gabung mata kuliah menggunakan kode dari dosen Anda untuk memulai pembelajaran kolaboratif
                             </p>
-                            <div className="mt-6">
+                            <div className="mt-5">
                                 <PrimaryButton onClick={() => setShowJoinModal(true)}>
                                     <Plus className="h-4 w-4" />
                                     Gabung Mata Kuliah
@@ -171,7 +172,15 @@ export default function StudentCoursesIndex({ courses }: Props) {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="fixed inset-0 z-50 flex items-center justify-center p-4"
                         >
-                            <LiquidGlassCard intensity="heavy" className="w-full max-w-md p-6" lightMode={true}>
+                            <div
+                                className="w-full max-w-md rounded-3xl p-6 shadow-2xl"
+                                style={{
+                                    background: 'rgba(255,255,255,0.95)',
+                                    backdropFilter: 'blur(24px)',
+                                    WebkitBackdropFilter: 'blur(24px)',
+                                    border: '1px solid rgba(255,255,255,0.6)',
+                                }}
+                            >
                                 <div className="flex items-center justify-between">
                                     <h3 
                                         className="text-lg font-semibold"
@@ -181,7 +190,7 @@ export default function StudentCoursesIndex({ courses }: Props) {
                                     </h3>
                                     <button
                                         onClick={() => setShowJoinModal(false)}
-                                        className="rounded-lg p-2 text-[#6B7280] hover:text-[#4A4A4A] hover:bg-white/50 transition-colors"
+                                        className="rounded-lg p-2 text-[#6B7280] hover:text-[#4A4A4A] hover:bg-black/5 transition-colors"
                                     >
                                         <X className="h-5 w-5" />
                                     </button>
@@ -191,15 +200,24 @@ export default function StudentCoursesIndex({ courses }: Props) {
                                 </p>
                                 <form onSubmit={handleJoin} className="mt-6 space-y-4">
                                     <div>
-                                        <InputLabel htmlFor="join_code" required>
-                                            Kode Gabung
-                                        </InputLabel>
+                                        <label
+                                            htmlFor="join_code"
+                                            className="block text-sm font-medium"
+                                            style={{ color: '#4A4A4A' }}
+                                        >
+                                            Kode Gabung <span className="text-[#88161c]">*</span>
+                                        </label>
                                         <input
                                             id="join_code"
                                             type="text"
                                             value={data.join_code}
                                             onChange={(e) => setData('join_code', e.target.value.toUpperCase())}
-                                            className="mt-1 block w-full rounded-xl border-0 bg-white/60 px-4 py-3 text-center font-mono text-lg tracking-wider text-[#4A4A4A] shadow-sm ring-1 ring-inset ring-white/50 placeholder:text-[#9ca3af] focus:ring-2 focus:ring-inset focus:ring-[#88161c]/30 sm:text-sm sm:leading-6"
+                                            className="mt-1.5 block w-full rounded-xl border px-4 py-3 text-center font-mono text-lg tracking-wider shadow-sm focus:border-[#88161c] focus:ring focus:ring-[#88161c] focus:ring-opacity-20"
+                                            style={{
+                                                backgroundColor: '#f8fafc',
+                                                borderColor: '#e2e8f0',
+                                                color: '#4A4A4A',
+                                            }}
                                             placeholder="MASUKKAN KODE"
                                             maxLength={20}
                                         />
@@ -220,7 +238,7 @@ export default function StudentCoursesIndex({ courses }: Props) {
                                         </PrimaryButton>
                                     </div>
                                 </form>
-                            </LiquidGlassCard>
+                            </div>
                         </motion.div>
                     </>
                 )}

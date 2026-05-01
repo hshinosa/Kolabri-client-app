@@ -18,6 +18,7 @@ import { useLecturerNav } from '@/components/navigation/lecturer-nav';
 import AppLayout from '@/layouts/app-layout';
 import lecturer from '@/routes/lecturer';
 import { Course, SharedData } from '@/types';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 interface GroupAnalytics {
     groupId: string;
@@ -154,6 +155,7 @@ const getEngagementStyle = (type: string) => {
 
 export default function CourseAnalytics({ course, analytics }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const [jwtToken, setJwtToken] = useState('');
     const summary = analytics?.summary ?? defaultSummary;
     const groups = useMemo(() => analytics?.groups ?? [], [analytics?.groups]);
 
@@ -170,18 +172,22 @@ export default function CourseAnalytics({ course, analytics }: Props) {
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
+        getAuthToken().then(setJwtToken).catch(console.error);
+    }, []);
+
+    useEffect(() => {
         setLiveGroups(groups);
     }, [groups]);
 
     const navItems = useLecturerNav('analytics', { courseId: course.id });
 
     useEffect(() => {
-        if (!auth.token) return;
+        if (!jwtToken) return;
 
         const apiUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         const socket: Socket = io(apiUrl, {
-            auth: { token: auth.token },
+            auth: { token: jwtToken },
             transports: ['websocket', 'polling'],
         });
 
@@ -209,7 +215,7 @@ export default function CourseAnalytics({ course, analytics }: Props) {
         return () => {
             socket.disconnect();
         };
-    }, [auth.token, course.id]);
+    }, [jwtToken, course.id]);
 
     const dismissAlert = (index: number) => {
         setAlerts((prev) => prev.filter((_, currentIndex) => currentIndex !== index));
@@ -220,7 +226,7 @@ export default function CourseAnalytics({ course, analytics }: Props) {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
             const response = await fetch(`${apiUrl}/api/analytics/course/${course.id}`, {
                 headers: {
-                    Authorization: `Bearer ${auth.token}`,
+                    Authorization: `Bearer ${jwtToken}`,
                 },
             });
 
@@ -231,7 +237,7 @@ export default function CourseAnalytics({ course, analytics }: Props) {
         } catch (error) {
             console.error('Failed to refresh analytics:', error);
         }
-    }, [course.id, auth.token]);
+    }, [course.id, jwtToken]);
 
     const liveSummary = useMemo(() => {
         const qualityScores = liveGroups

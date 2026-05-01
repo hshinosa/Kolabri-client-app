@@ -4,7 +4,7 @@
 
 // ============ User & Auth Types ============
 
-export type UserRole = 'lecturer' | 'student';
+export type UserRole = 'lecturer' | 'student' | 'admin';
 
 export interface User {
     id: string;
@@ -233,7 +233,7 @@ export interface JoinCourseData {
 
 export interface AiMessage {
     id: string;
-    conversation_id: string;
+    conversation_id?: string;
     role: 'user' | 'assistant';
     content: string;
     created_at: string;

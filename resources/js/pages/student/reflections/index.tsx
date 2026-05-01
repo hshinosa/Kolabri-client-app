@@ -159,10 +159,12 @@ export default function StudentReflectionsIndex({ reflections, courses }: Props)
                                 Lacak perjalanan pembelajaran Anda melalui refleksi sesi dan mingguan.
                             </p>
                         </div>
-                        <PrimaryButton onClick={() => setShowCreateModal(true)}>
-                            <Plus className="h-4 w-4" />
-                            Refleksi Mingguan
-                        </PrimaryButton>
+                        {safeReflections.length > 0 && (
+                            <PrimaryButton onClick={() => setShowCreateModal(true)}>
+                                <Plus className="h-4 w-4" />
+                                Refleksi Mingguan
+                            </PrimaryButton>
+                        )}
                     </div>
                 </LiquidGlassCard>
 
@@ -198,23 +200,23 @@ export default function StudentReflectionsIndex({ reflections, courses }: Props)
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <LiquidGlassCard intensity="medium" className="flex flex-col items-center justify-center py-16 text-center" lightMode={true}>
+                        <LiquidGlassCard intensity="light" className="flex flex-col items-center justify-center py-12 text-center" lightMode={true}>
                             <div
-                                className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+                                className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl"
                                 style={{
                                     background: 'rgba(136,22,28,0.08)',
                                     border: '1px solid rgba(136,22,28,0.12)',
                                 }}
                             >
-                                <Pencil className="h-8 w-8" style={{ color: '#88161c' }} />
+                                <Pencil className="h-7 w-7" style={{ color: '#88161c' }} />
                             </div>
                             <h3 className="text-lg font-semibold" style={headingStyle}>
                                 Belum ada refleksi
                             </h3>
-                            <p className="mt-2 max-w-sm text-sm text-[#6B7280]">
+                            <p className="mt-1.5 max-w-sm text-sm text-[#6B7280]">
                                 Mulai refleksi pertama Anda untuk melacak perjalanan pembelajaran dan membangun kebiasaan belajar yang konsisten.
                             </p>
-                            <div className="mt-6">
+                            <div className="mt-5">
                                 <PrimaryButton onClick={() => setShowCreateModal(true)}>
                                     <Plus className="h-4 w-4" />
                                     Tulis Refleksi Mingguan

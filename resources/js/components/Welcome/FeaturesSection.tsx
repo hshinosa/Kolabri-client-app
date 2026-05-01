@@ -1,30 +1,48 @@
 import { motion } from 'framer-motion';
 import { Activity, Bell, BookOpen, Brain, BarChart3, MessageSquare } from 'lucide-react';
-import { LiquidFeatureCard } from './utils/helpers';
+import { LiquidFeatureCard, useReducedMotion } from './utils/helpers';
 
 type Props = { lightMode: boolean };
 
 export default function FeaturesSection({ lightMode }: Props) {
+    const prefersReducedMotion = useReducedMotion();
+
     return (
         <>
             {/* ========== FEATURES SECTION ========== */}
             <section id="fitur" className="relative py-32">
                 {/* Decorative floating shapes */}
                 <motion.div
-                    animate={{
-                        y: [0, -20, 0],
-                        rotate: [0, 5, -5, 0],
-                    }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={
+                        prefersReducedMotion
+                            ? { y: 0, rotate: 0 }
+                            : {
+                                  y: [0, -20, 0],
+                                  rotate: [0, 5, -5, 0],
+                              }
+                    }
+                    transition={
+                        prefersReducedMotion
+                            ? { duration: 0.3 }
+                            : { duration: 8, repeat: Infinity, ease: 'easeInOut' }
+                    }
                     className="pointer-events-none absolute top-40 right-10 h-64 w-64 rounded-full opacity-20 blur-3xl"
                     style={{ background: lightMode ? 'rgba(136,22,28,0.08)' : 'rgba(164,18,25,0.15)' }}
                 />
                 <motion.div
-                    animate={{
-                        y: [0, 30, 0],
-                        x: [0, -20, 0],
-                    }}
-                    transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                    animate={
+                        prefersReducedMotion
+                            ? { y: 0, x: 0 }
+                            : {
+                                  y: [0, 30, 0],
+                                  x: [0, -20, 0],
+                              }
+                    }
+                    transition={
+                        prefersReducedMotion
+                            ? { duration: 0.3 }
+                            : { duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }
+                    }
                     className="pointer-events-none absolute bottom-20 left-10 h-80 w-80 rounded-full opacity-20 blur-3xl"
                     style={{ background: lightMode ? 'rgba(30,58,138,0.06)' : 'rgba(30,58,138,0.12)' }}
                 />

@@ -21,7 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Register custom middleware aliases
+        $middleware->validateCsrfTokens(except: [
+            'student/ai-chat/*/messages/stream',
+        ]);
+
         $middleware->alias([
             'auth.jwt' => JwtAuthMiddleware::class,
             'role' => RoleMiddleware::class,

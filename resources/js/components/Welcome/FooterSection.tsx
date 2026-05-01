@@ -37,7 +37,7 @@ export default function FooterSection({ lightMode }: Props) {
                                 className="flex items-center gap-3"
                                 aria-label="Kembali ke beranda"
                             >
-                                <img src="/LogoKolabri.webp" alt="Kolabri" className="h-10 w-auto" />
+                                <img src="/LogoKolabri.webp" alt="Kolabri" className="h-10 w-auto" loading="lazy" />
                                 <span
                                     className="text-lg font-semibold"
                                     style={{ color: lightMode ? '#4A4A4A' : '#e5e7eb', fontFamily: "'Plus Jakarta Sans', sans-serif" }}

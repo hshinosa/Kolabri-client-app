@@ -105,7 +105,7 @@ export default function NavBar({ lightMode, darkMode, scrolled, menuOpen, setMen
                                     ].map((link) => {
                                         const isActive = activeSection === link.id;
                                         return (
-                                            <a
+                                            <motion.a
                                                 key={link.id}
                                                 href={`#${link.id}`}
                                                 onClick={(e) => {
@@ -113,25 +113,40 @@ export default function NavBar({ lightMode, darkMode, scrolled, menuOpen, setMen
                                                     document.getElementById(link.id)?.scrollIntoView({ behavior: 'smooth' });
                                                 }}
                                                 className="relative flex flex-col items-center px-4 py-2"
+                                                whileHover={{ y: -1 }}
+                                                whileTap={{ scale: 0.985 }}
+                                                transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                                                 style={{
                                                     color: isActive ? '#88161c' : lightMode ? '#1e293b' : '#cbd5e1',
                                                     fontSize: scrolled ? '14px' : '15px',
                                                     fontWeight: isActive ? 600 : 500,
                                                     textDecoration: 'none',
-                                                    transition: 'color 0.2s ease, font-size 0.45s cubic-bezier(0.4,0,0.2,1)',
+                                                    transition: 'color 0.35s ease, font-size 0.45s cubic-bezier(0.4,0,0.2,1)',
                                                 }}
                                             >
-                                                {link.label}
-                                                <span
+                                                {isActive && (
+                                                    <motion.span
+                                                        layoutId="desktop-nav-active-pill"
+                                                        className="absolute inset-0 rounded-full"
+                                                        transition={{ type: 'spring', stiffness: 440, damping: 36, mass: 0.7 }}
+                                                        style={{
+                                                            background: lightMode ? 'rgba(136,22,28,0.1)' : 'rgba(136,22,28,0.2)',
+                                                            boxShadow: lightMode
+                                                                ? 'inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 14px rgba(136,22,28,0.12)'
+                                                                : 'inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 18px rgba(0,0,0,0.25)',
+                                                        }}
+                                                    />
+                                                )}
+                                                <span className="relative z-10">{link.label}</span>
+                                                <motion.span
                                                     className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+                                                    animate={{ opacity: isActive ? 1 : 0, scale: isActive ? 1 : 0.5 }}
+                                                    transition={{ type: 'spring', stiffness: 420, damping: 30 }}
                                                     style={{
                                                         background: '#88161c',
-                                                        opacity: isActive ? 1 : 0,
-                                                        transform: `translateX(-50%) scale(${isActive ? 1 : 0})`,
-                                                        transition: 'opacity 0.2s ease, transform 0.2s ease',
                                                     }}
                                                 />
-                                            </a>
+                                            </motion.a>
                                         );
                                     })}
                                 </div>

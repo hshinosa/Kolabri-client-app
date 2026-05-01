@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { motion, useInView } from 'framer-motion';
 import { AlertTriangle, BarChart3, BookOpen, GraduationCap, LayoutDashboard, LineChart, MessageSquare, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -100,29 +101,43 @@ export function GlassPill({
         transition: 'opacity 0.2s ease',
     };
 
-    const Tag = href ? 'a' : 'button';
-    return (
-        <Tag
-            ref={ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>}
-            href={href}
-            onClick={(e) => {
-                if (href && href.startsWith('#')) {
-                    e.preventDefault();
-                    const targetId = href.substring(1);
-                    document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
-                }
-                if (onClick) onClick();
-            }}
-            style={glassStyle}
-            className={className}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
+    const isInternalLink = href && href.startsWith('/') && !href.startsWith('#');
+    
+    const handleClick = (e: React.MouseEvent) => {
+        if (href && href.startsWith('#')) {
+            e.preventDefault();
+            const targetId = href.substring(1);
+            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+        }
+        if (onClick) onClick();
+    };
+
+    const commonProps = {
+        ref: ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>,
+        onClick: handleClick,
+        style: glassStyle,
+        className,
+        onMouseMove: handleMouseMove,
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+    };
+
+    const content = (
+        <>
             <div style={spotlightStyle} />
             <span style={{ position: 'relative', zIndex: 1 }}>{children}</span>
-        </Tag>
+        </>
     );
+
+    if (isInternalLink) {
+        return <Link href={href!} {...commonProps}>{content}</Link>;
+    }
+    
+    if (href) {
+        return <a href={href} {...commonProps}>{content}</a>;
+    }
+    
+    return <button {...commonProps}>{content}</button>;
 }
 
 // Primary CTA button (red gradient) with spotlight hover
@@ -143,6 +158,7 @@ export function PrimaryButton({
     const [pos, setPos] = useState({ x: 0, y: 0 });
     const [hovered, setHovered] = useState(false);
     const [pressed, setPressed] = useState(false);
+    const [focused, setFocused] = useState(false);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         const rect = ref.current?.getBoundingClientRect();
@@ -171,50 +187,74 @@ export function PrimaryButton({
         boxShadow: hovered
             ? 'inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.2), 0 12px 40px rgba(136,22,28,0.55)'
             : 'inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.15), 0 8px 32px rgba(136,22,28,0.4)',
-        transform: pressed ? 'scale(0.97) translateZ(0)' : 'translateZ(0)',
-        transition: 'box-shadow 0.2s ease, transform 0.1s ease',
+        transform: pressed ? 'translateY(1px) scale(0.985) translateZ(0)' : hovered ? 'translateY(-1px) translateZ(0)' : 'translateZ(0)',
+        transition: 'box-shadow 0.22s ease, transform 0.14s ease, filter 0.22s ease',
+        filter: hovered ? 'saturate(1.06)' : 'saturate(1)',
+        outline: focused ? '2px solid rgba(136,22,28,0.45)' : 'none',
+        outlineOffset: '2px',
         willChange: 'transform',
     };
 
     const spotlightStyle: React.CSSProperties = {
         position: 'absolute',
-        width: '120px',
-        height: '120px',
+        width: '110px',
+        height: '110px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%)',
-        transform: `translate(${pos.x - 60}px, ${pos.y - 60}px)`,
+        background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 72%)',
+        transform: `translate(${pos.x - 55}px, ${pos.y - 55}px)`,
         pointerEvents: 'none',
         opacity: hovered ? 1 : 0,
-        transition: 'opacity 0.2s ease',
+        transition: 'opacity 0.22s ease',
     };
 
-    const Tag = href ? 'a' : 'button';
-    return (
-        <Tag
-            ref={ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>}
-            href={href}
-            onClick={(e) => {
-                if (href && href.startsWith('#')) {
-                    e.preventDefault();
-                    document.getElementById(href.substring(1))?.scrollIntoView({ behavior: 'smooth' });
-                }
-                if (onClick) onClick();
-            }}
-            style={baseStyle}
-            className={`${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => { setHovered(false); setPressed(false); }}
-            onMouseDown={() => setPressed(true)}
-            onMouseUp={() => !disabled && setPressed(false)}
-            disabled={disabled}
-        >
+    const isInternalLink = href && href.startsWith('/') && !href.startsWith('#');
+    
+    const handleClick = (e: React.MouseEvent) => {
+        if (href && href.startsWith('#')) {
+            e.preventDefault();
+            document.getElementById(href.substring(1))?.scrollIntoView({ behavior: 'smooth' });
+        }
+        if (onClick) onClick();
+    };
+
+    const commonProps = {
+        ref: ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>,
+        onClick: handleClick,
+        style: baseStyle,
+        className: `${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`,
+        onMouseMove: handleMouseMove,
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => {
+            setHovered(false);
+            setPressed(false);
+        },
+        onMouseDown: () => setPressed(true),
+        onMouseUp: () => !disabled && setPressed(false),
+        onFocus: () => setFocused(true),
+        onBlur: () => {
+            setFocused(false);
+            setPressed(false);
+        },
+    };
+
+    const content = (
+        <>
             <div style={spotlightStyle} />
             <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 {children}
             </span>
-        </Tag>
+        </>
     );
+
+    if (isInternalLink) {
+        return <Link href={href!} {...commonProps}>{content}</Link>;
+    }
+    
+    if (href) {
+        return <a href={href} {...commonProps}>{content}</a>;
+    }
+    
+    return <button disabled={disabled} {...commonProps}>{content}</button>;
 }
 
 // Secondary CTA button (glass/transparent) with spotlight hover
@@ -224,17 +264,20 @@ export function SecondaryButton({
     onClick,
     lightMode = true,
     className = '',
+    disabled = false,
 }: {
     children: React.ReactNode;
     href?: string;
     onClick?: () => void;
     lightMode?: boolean;
     className?: string;
+    disabled?: boolean;
 }) {
     const ref = useRef<HTMLAnchorElement & HTMLButtonElement>(null);
     const [pos, setPos] = useState({ x: 0, y: 0 });
     const [hovered, setHovered] = useState(false);
     const [pressed, setPressed] = useState(false);
+    const [focused, setFocused] = useState(false);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         const rect = ref.current?.getBoundingClientRect();
@@ -269,53 +312,82 @@ export function SecondaryButton({
             : (lightMode
                 ? 'inset 0 1px 0 rgba(255,255,255,0.5)'
                 : 'inset 0 1px 0 rgba(255,255,255,0.1)'),
-        transform: pressed ? 'scale(0.97) translateZ(0)' : 'translateZ(0)',
-        transition: 'background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease',
+        transform: pressed ? 'translateY(1px) scale(0.985) translateZ(0)' : hovered ? 'translateY(-1px) translateZ(0)' : 'translateZ(0)',
+        transition: 'background 0.22s ease, box-shadow 0.22s ease, transform 0.14s ease',
+        outline: focused ? '2px solid rgba(136,22,28,0.35)' : 'none',
+        outlineOffset: '2px',
         willChange: 'transform',
     };
 
     const spotlightStyle: React.CSSProperties = {
         position: 'absolute',
-        width: '120px',
-        height: '120px',
+        width: '110px',
+        height: '110px',
         borderRadius: '50%',
-        background: `radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 70%)`,
-        transform: `translate(${pos.x - 60}px, ${pos.y - 60}px)`,
+        background: `radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 72%)`,
+        transform: `translate(${pos.x - 55}px, ${pos.y - 55}px)`,
         pointerEvents: 'none',
         opacity: hovered ? 1 : 0,
-        transition: 'opacity 0.2s ease',
+        transition: 'opacity 0.22s ease',
     };
 
-    const Tag = href ? 'a' : 'button';
-    return (
-        <Tag
-            ref={ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>}
-            href={href}
-            onClick={(e) => {
-                if (href && href.startsWith('#')) {
-                    e.preventDefault();
-                    document.getElementById(href.substring(1))?.scrollIntoView({ behavior: 'smooth' });
-                }
-                if (onClick) onClick();
-            }}
-            style={baseStyle}
-            className={className}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => { setHovered(false); setPressed(false); }}
-            onMouseDown={() => setPressed(true)}
-            onMouseUp={() => setPressed(false)}
-        >
+    const isInternalLink = href && href.startsWith('/') && !href.startsWith('#');
+    
+    const handleClick = (e: React.MouseEvent) => {
+        if (disabled) {
+            e.preventDefault();
+            return;
+        }
+
+        if (href && href.startsWith('#')) {
+            e.preventDefault();
+            document.getElementById(href.substring(1))?.scrollIntoView({ behavior: 'smooth' });
+        }
+        if (onClick) onClick();
+    };
+
+    const commonProps = {
+        ref: ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>,
+        onClick: handleClick,
+        style: baseStyle,
+        className: `${className} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`,
+        onMouseMove: handleMouseMove,
+        onMouseEnter: () => !disabled && setHovered(true),
+        onMouseLeave: () => {
+            setHovered(false);
+            setPressed(false);
+        },
+        onMouseDown: () => !disabled && setPressed(true),
+        onMouseUp: () => !disabled && setPressed(false),
+        onFocus: () => setFocused(true),
+        onBlur: () => {
+            setFocused(false);
+            setPressed(false);
+        },
+    };
+
+    const content = (
+        <>
             <div style={spotlightStyle} />
             <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                 {children}
             </span>
-        </Tag>
+        </>
     );
+
+    if (isInternalLink) {
+        return <Link href={href!} {...commonProps}>{content}</Link>;
+    }
+    
+    if (href) {
+        return <a href={href} {...commonProps}>{content}</a>;
+    }
+    
+    return <button disabled={disabled} {...commonProps}>{content}</button>;
 }
 
 // Hook to detect prefers-reduced-motion
-function useReducedMotion() {
+export function useReducedMotion() {
     const [prefersReduced, setPrefersReduced] = useState(false);
     useEffect(() => {
         const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -498,7 +570,7 @@ export function LiquidFeatureCard({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
-            className="group relative h-full"
+            className="relative h-full"
         >
             <div className="h-full">
                 <LiquidGlassCard className="h-full p-8" intensity="medium" lightMode={lightMode}>
@@ -546,7 +618,7 @@ export function StepCard({
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.7, delay, ease: [0.25, 0.1, 0.25, 1] }}
-            className="group relative"
+            className="relative"
         >
             <LiquidGlassCard className="p-8" intensity="light" lightMode={lightMode}>
                 <div className="flex items-start gap-6">
@@ -859,6 +931,8 @@ export function InteractiveChatDemo({ lightMode = true }: { lightMode?: boolean 
     const inView = useInView(containerRef, { once: false, margin: '-100px' });
     const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
     const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const LOOP_PAUSE_MS = 7000;
+    const START_OFFSET_MS = 450;
 
     const messages = [
         { from: 'student', name: 'Andi', text: 'Apa perbedaan antara REST dan GraphQL?', delay: 0 },
@@ -893,10 +967,12 @@ export function InteractiveChatDemo({ lightMode = true }: { lightMode?: boolean 
                 setStep(i + 1);
                 if (i === messages.length - 1) {
                     setRunning(false);
-                    // Auto-loop: restart after 3s pause
-                    loopTimeoutRef.current = setTimeout(runDemo, 3000);
+                    // Auto-loop with calmer cadence while staying alive
+                    loopTimeoutRef.current = setTimeout(() => {
+                        if (inView) runDemo();
+                    }, LOOP_PAUSE_MS);
                 }
-            }, messages[i].delay + 300);
+            }, messages[i].delay + START_OFFSET_MS);
             timeoutsRef.current.push(t);
         });
     };
@@ -958,7 +1034,7 @@ export function InteractiveChatDemo({ lightMode = true }: { lightMode?: boolean 
             </div>
 
             {/* Messages fixed height, scrollable */}
-            <div className="flex flex-col gap-3 overflow-y-auto px-4 py-4" style={{ height: '400px' }}>
+            <div ref={scrollBoxRef} className="flex flex-col gap-3 overflow-y-auto px-4 py-4" style={{ height: '400px' }}>
                 {visibleMessages.map((msg, i) => (
                     <motion.div
                         key={`${step}-${i}`}
@@ -1029,9 +1105,14 @@ export function InteractiveChatDemo({ lightMode = true }: { lightMode?: boolean 
                                 border: lightMode ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(26, 14, 14, 0.09)',
                             }}
                         >
-                            <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#6B7280] [animation-delay:0ms]" />
-                            <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#6B7280] [animation-delay:150ms]" />
-                            <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#6B7280] [animation-delay:300ms]" />
+                            {[0, 1, 2].map((dot) => (
+                                <motion.div
+                                    key={dot}
+                                    className="h-1.5 w-1.5 rounded-full bg-[#6B7280]"
+                                    animate={{ opacity: [0.35, 1, 0.35], scale: [0.95, 1.1, 0.95] }}
+                                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut', delay: dot * 0.18 }}
+                                />
+                            ))}
                         </div>
                     </motion.div>
                 )}

@@ -27,16 +27,21 @@ export default function ProgressTimeline({ lightMode, activeSection }: Props) {
                 const isActive = currentActive === section.id;
                 
                 return (
-                    <div key={section.id} className="group relative flex items-center gap-4">
+                    <motion.div
+                        key={section.id}
+                        className="group relative flex items-center gap-4"
+                        transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                    >
                         {/* Label */}
                         <motion.span
                             initial={{ opacity: 0, x: 10 }}
                             animate={{ 
                                 opacity: isActive ? 1 : 0.4,
                                 x: isActive ? 0 : 5,
-                                fontWeight: isActive ? 600 : 400
+                                fontWeight: isActive ? 600 : 400,
                             }}
-                            className="text-sm transition-all duration-300 group-hover:opacity-100"
+                            transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+                            className="text-sm transition-all duration-300"
                             style={{ color: lightMode ? '#4A4A4A' : '#e5e7eb' }}
                         >
                             {section.label}
@@ -53,20 +58,24 @@ export default function ProgressTimeline({ lightMode, activeSection }: Props) {
                             )}
                             
                             {/* Active Dot */}
-                            <motion.div
-                                animate={{
-                                    height: isActive ? 24 : 8,
-                                    width: isActive ? 4 : 4,
-                                    backgroundColor: isActive 
-                                        ? '#88161c' 
-                                        : lightMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)'
-                                }}
-                                className="z-10 rounded-full transition-all duration-300"
-                            />
+                        <motion.div
+                            animate={{
+                                height: isActive ? 24 : 8,
+                                width: isActive ? 4 : 4,
+                                backgroundColor: isActive 
+                                    ? '#88161c' 
+                                    : lightMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+                                boxShadow: isActive
+                                    ? '0 0 14px rgba(136,22,28,0.35)'
+                                    : '0 0 0px rgba(136,22,28,0)',
+                            }}
+                            transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                            className="z-10 rounded-full"
+                        />
                         </div>
                         
                         {/* Clickable Area Overlay */}
-                        <a 
+                        <motion.a 
                             href={`#${section.id}`} 
                             onClick={(e) => {
                                 e.preventDefault();
@@ -75,7 +84,7 @@ export default function ProgressTimeline({ lightMode, activeSection }: Props) {
                             className="absolute inset-0 cursor-pointer"
                             aria-label={`Scroll to ${section.label}`}
                         />
-                    </div>
+                    </motion.div>
                 );
             })}
         </nav>

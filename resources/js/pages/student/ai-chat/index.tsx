@@ -1,11 +1,25 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, Menu, MessageSquare, Pencil, Plus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, Menu, MessageSquare, Pencil, Plus, Send, Sparkles, Trash2, X, RefreshCw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 import { LiquidGlassCard, PrimaryButton, SecondaryButton } from '@/components/Welcome/utils/helpers';
+import { ChatSkeleton } from '@/components/ui/skeletons';
 import { AiMessage, SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
+import { formatAiOutput } from '@/lib/formatAiOutput';
+import { getAuthToken } from '@/lib/getAuthToken';
+import { fetchChatMessages } from '@/lib/fetchChatMessages';
+import { sanitizeHtml } from '@/lib/sanitize';
+
+const getCoreApiUrl = () => {
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        return `http://${hostname}:3000`;
+    }
+    return 'http://localhost:3000';
+};
 import student from '@/routes/student';
 import { useStudentNav } from '@/components/navigation/student-nav';
 import AppLayout from '@/layouts/app-layout';
@@ -33,30 +47,24 @@ const bodyTextClass = 'text-sm text-[#4B5563]';
 const emptyStateCards = [
     {
         icon: MessageSquare,
-        eyebrow: 'Fast Start',
+        eyebrow: 'Mulai Cepat',
         title: 'Bantu pecahkan ide, umpan balik, dan tugas jadi lebih terarah.',
         prompt: 'Bantu saya menyusun ide utama untuk tugas saya dan beri langkah pengerjaannya.',
     },
     {
         icon: Sparkles,
-        eyebrow: 'Collaborate with AI',
+        eyebrow: 'Kolaborasi AI',
         title: 'Diskusikan materi, minta ringkasan, lalu rapikan pemahaman Anda lebih cepat.',
         prompt: 'Ringkas materi yang sedang saya pelajari lalu jelaskan poin paling pentingnya.',
     },
     {
         icon: CalendarDays,
-        eyebrow: 'Planning',
+        eyebrow: 'Perencanaan',
         title: 'Atur prioritas belajar, pecah target mingguan, dan tetap fokus pada progres.',
         prompt: 'Bantu saya membuat rencana belajar mingguan yang realistis untuk mata kuliah saya.',
     },
 ] as const;
 
-const quickActions = [
-    'Deep Research',
-    'Ringkas Materi',
-    'Buat Rencana',
-    'Cari Ide Tugas',
-] as const;
 
 export default function AiChatIndex({ chats, activeChat }: Props) {
     const { auth: authData } = usePage<SharedData>().props;
@@ -67,70 +75,309 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
             error?: string;
         };
     };
+    const [jwtToken, setJwtToken] = useState('');
     const navItems = useStudentNav('ai-chat');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isTyping] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [streamingContent, setStreamingContent] = useState('');
+    const [displayedStreamingContent, setDisplayedStreamingContent] = useState('');
+    const [optimisticMessages, setOptimisticMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; content: string; created_at: string }>>([]);
     const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+    const [loadedMessages, setLoadedMessages] = useState<AiMessage[]>([]);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    useEffect(() => {
+        getAuthToken().then(setJwtToken).catch(console.error);
+    }, []);
+
+    useEffect(() => {
+        if (!activeChat?.id || !jwtToken) {
+            setLoadedMessages([]);
+            return;
+        }
+
+        setIsLoadingMessages(true);
+        setFetchError(null);
+        fetchChatMessages(activeChat.id, jwtToken)
+            .then(setLoadedMessages)
+            .catch(err => setFetchError(err.message))
+            .finally(() => setIsLoadingMessages(false));
+    }, [activeChat?.id, jwtToken]);
     const [editingChatId, setEditingChatId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
+    const [inputValue, setInputValue] = useState('');
+    const [inputError, setInputError] = useState('');
+    const [isMessagesScrolling, setIsMessagesScrolling] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
     const safeChats = chats ?? [];
-    const messages = useMemo(() => activeChat?.messages ?? [], [activeChat?.messages]);
+    const serverMessages = useMemo(() => loadedMessages, [loadedMessages]);
+    const messages = useMemo(() => [...serverMessages, ...optimisticMessages], [optimisticMessages, serverMessages]);
     const userFirstName = useMemo(() => authData.user?.name?.split(' ')[0] || 'Mahasiswa', [authData.user?.name]);
-    const isEmptyState = messages.length === 0;
-
-    const messageForm = useForm({
-        content: '',
-    });
+    const isEmptyState = messages.length === 0 && !isStreaming;
 
     const titleForm = useForm({
         title: '',
     });
 
     const pageErrors = pageProps.errors ?? {};
+    const [showFlash, setShowFlash] = useState(true);
+
+    useEffect(() => {
+        if (pageProps.flash?.success) {
+            setShowFlash(true);
+            const timer = setTimeout(() => setShowFlash(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [pageProps.flash?.success]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, displayedStreamingContent, isStreaming]);
+
+    useEffect(() => {
+        if (!isStreaming && !streamingContent) {
+            setDisplayedStreamingContent('');
+            return;
+        }
+
+        if (displayedStreamingContent === streamingContent) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            setDisplayedStreamingContent((current) => {
+                if (current.length >= streamingContent.length) {
+                    window.clearInterval(interval);
+                    return current;
+                }
+
+                const nextLength = Math.min(
+                    streamingContent.length,
+                    current.length + Math.max(1, Math.ceil((streamingContent.length - current.length) / 18)),
+                );
+
+                return streamingContent.slice(0, nextLength);
+            });
+        }, 28);
+
+        return () => window.clearInterval(interval);
+    }, [displayedStreamingContent, isStreaming, streamingContent]);
 
     // Focus input on load
     useEffect(() => {
         inputRef.current?.focus();
     }, [activeChat]);
 
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            setIsMessagesScrolling(true);
+
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+
+            scrollTimeoutRef.current = setTimeout(() => {
+                setIsMessagesScrolling(false);
+            }, 900);
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            container.removeEventListener('scroll', handleScroll);
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const readStream = async (resp: Response, onChunk: (text: string) => void) => {
+        if (!resp.body) return;
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const text = decoder.decode(value, { stream: true });
+            for (const line of text.split('\n')) {
+                if (!line.startsWith('data: ')) continue;
+                const payload = line.slice(6);
+                if (payload === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(payload);
+                    if (parsed.content) {
+                        accumulated += parsed.content;
+                        onChunk(accumulated);
+                    }
+                } catch {}
+            }
+        }
+    };
+
+    const waitForRevealToCatchUp = async (target: string) => {
+        const timeoutAt = Date.now() + 12000;
+
+        while (Date.now() < timeoutAt) {
+            if (displayedStreamingContentRef.current === target) {
+                return;
+            }
+
+            await new Promise((resolve) => window.setTimeout(resolve, 35));
+        }
+    };
+
+    const apiHeaders = useMemo(() => ({
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`,
+    }), [jwtToken]);
+
+    const displayedStreamingContentRef = useRef('');
+
+    useEffect(() => {
+        displayedStreamingContentRef.current = displayedStreamingContent;
+    }, [displayedStreamingContent]);
+
+    const doStream = async (chatId: string, content: string) => {
+        setOptimisticMessages([{ id: `opt-user-${Date.now()}`, role: 'user', content, created_at: new Date().toISOString() }]);
+        setIsStreaming(true);
+        setStreamingContent('');
+        setDisplayedStreamingContent('');
+
+        try {
+            const resp = await fetch(`${getCoreApiUrl()}/api/ai-chats/${chatId}/messages/stream`, {
+                method: 'POST',
+                headers: { ...apiHeaders, 'Accept': 'text/event-stream' },
+                body: JSON.stringify({ content }),
+            });
+
+            if (!resp.ok || !resp.body) {
+                setOptimisticMessages((prev) => [...prev, { id: `opt-err-${Date.now()}`, role: 'assistant', content: 'Maaf, terjadi kesalahan. Silakan coba lagi.', created_at: new Date().toISOString() }]);
+                setIsStreaming(false);
+                return;
+            }
+
+            let finalText = '';
+            await readStream(resp, (text) => {
+                finalText = text;
+                setStreamingContent(text);
+            });
+
+            await waitForRevealToCatchUp(finalText);
+        } catch {
+            setOptimisticMessages((prev) => [...prev, { id: `opt-err-${Date.now()}`, role: 'assistant', content: 'Maaf, koneksi terputus. Silakan coba lagi.', created_at: new Date().toISOString() }]);
+        } finally {
+            setIsStreaming(false);
+            setOptimisticMessages((prev) => {
+                const userMessage = prev.find((message) => message.role === 'user');
+                const finalAssistantContent = displayedStreamingContentRef.current || streamingContent;
+
+                if (!userMessage || !finalAssistantContent) {
+                    return prev;
+                }
+
+                return [
+                    {
+                        ...userMessage,
+                        id: `sent-user-${Date.now()}`,
+                    },
+                    {
+                        id: `sent-assistant-${Date.now()}`,
+                        role: 'assistant',
+                        content: finalAssistantContent,
+                        created_at: new Date().toISOString(),
+                    },
+                ];
+            });
+        }
+    };
+
+    const doCreateAndStream = async (content: string) => {
+        setOptimisticMessages([{ id: `opt-user-${Date.now()}`, role: 'user', content, created_at: new Date().toISOString() }]);
+        setIsStreaming(true);
+        setStreamingContent('');
+        setDisplayedStreamingContent('');
+
+        try {
+            const createResp = await fetch(`${getCoreApiUrl()}/api/ai-chats`, {
+                method: 'POST',
+                headers: apiHeaders,
+                body: JSON.stringify({ title: content.substring(0, 50) }),
+            });
+
+            if (!createResp.ok) {
+                setOptimisticMessages((prev) => [...prev, { id: `opt-err-${Date.now()}`, role: 'assistant', content: 'Gagal membuat chat baru.', created_at: new Date().toISOString() }]);
+                setIsStreaming(false);
+                return;
+            }
+
+            const { data: newChat } = await createResp.json();
+            const chatId = newChat.id;
+
+            const streamResp = await fetch(`${getCoreApiUrl()}/api/ai-chats/${chatId}/messages/stream`, {
+                method: 'POST',
+                headers: { ...apiHeaders, 'Accept': 'text/event-stream' },
+                body: JSON.stringify({ content }),
+            });
+
+            if (!streamResp.ok || !streamResp.body) {
+                setOptimisticMessages((prev) => [...prev, { id: `opt-err-${Date.now()}`, role: 'assistant', content: 'Maaf, terjadi kesalahan.', created_at: new Date().toISOString() }]);
+                setIsStreaming(false);
+                router.visit(student.aiChat.show.url({ chat: chatId }));
+                return;
+            }
+
+            let finalText = '';
+            await readStream(streamResp, (text) => {
+                finalText = text;
+                setStreamingContent(text);
+            });
+
+            await waitForRevealToCatchUp(finalText);
+
+            const finalAssistantContent = displayedStreamingContentRef.current || finalText;
+
+            router.visit(student.aiChat.show.url({ chat: chatId }), {
+                preserveState: false,
+                onSuccess: () => {
+                    setIsStreaming(false);
+                    setStreamingContent(finalAssistantContent);
+                    setDisplayedStreamingContent(finalAssistantContent);
+                },
+            });
+        } catch {
+            setOptimisticMessages((prev) => [...prev, { id: `opt-err-${Date.now()}`, role: 'assistant', content: 'Maaf, koneksi terputus.', created_at: new Date().toISOString() }]);
+            setIsStreaming(false);
+        }
+    };
+
     const handleSendMessage = (e: FormEvent) => {
         e.preventDefault();
-        if (messageForm.processing) return;
+        if (isStreaming) return;
 
-        if (!messageForm.data.content.trim()) {
-            messageForm.setError('content', 'Pesan tidak boleh kosong.');
+        const content = inputValue.trim();
+        if (!content) {
+            setInputError('Pesan tidak boleh kosong.');
             return;
         }
-
-        messageForm.clearErrors('content');
+        setInputError('');
+        setInputValue('');
 
         if (!activeChat) {
-            // Create new conversation with first message
-            router.post(student.aiChat.store.url(), {
-                title: messageForm.data.content.substring(0, 50),
-                first_message: messageForm.data.content,
-            }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    messageForm.reset();
-                },
-            });
+            doCreateAndStream(content);
         } else {
-            // Add message to existing conversation
-            messageForm.post(student.aiChat.messages.store.url({ chat: activeChat.id }), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    messageForm.reset();
-                },
-            });
+            doStream(activeChat.id, content);
         }
     };
 
@@ -220,7 +467,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     };
 
     const prefillPrompt = (prompt: string) => {
-        messageForm.setData('content', prompt);
+        setInputValue(prompt);
         requestAnimationFrame(() => {
             inputRef.current?.focus({ preventScroll: true });
         });
@@ -231,42 +478,46 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
             <Head title="Chat dengan AI" />
 
             <div className="flex h-[calc(100vh-100px)] flex-col">
-                <div className="flex items-center justify-end mb-4">
+                <div className="flex items-center justify-end mb-3">
                     <button
                         type="button"
                         onClick={() => setSidebarOpen(true)}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/75 bg-white/72 text-[#4A4A4A] shadow-[0_12px_28px_rgba(148,163,184,0.14)] transition-colors hover:text-[#88161c]"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-white/75 bg-white/72 px-3.5 py-2.5 text-sm font-medium text-[#4A4A4A] shadow-[0_12px_28px_rgba(148,163,184,0.14)] transition-colors hover:text-[#88161c]"
                         title="Buka riwayat chat"
                     >
-                        <Menu className="h-5 w-5" />
+                        <Menu className="h-4.5 w-4.5" />
+                        Riwayat
                     </button>
                 </div>
 
-                <div className="grid gap-4 grid-cols-1 flex-1">
-                    <div className={`flex min-h-0 flex-col gap-4 ${isEmptyState ? 'justify-center' : ''}`}>
+                <div className="flex flex-1 flex-col min-h-0">
+                    <div className={`flex min-h-0 flex-1 flex-col ${isEmptyState ? 'justify-center' : 'gap-4'}`}>
                         {isEmptyState ? (
                             <motion.div
                                 initial={{ opacity: 0, y: 18 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.35 }}
-                                className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center"
+                                className="mx-auto flex w-full max-w-2xl flex-col items-center"
                             >
-                                <div className="mx-auto w-full max-w-3xl text-center">
-                                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(136,22,28,0.14)] bg-[rgba(136,22,28,0.07)] shadow-[0_14px_32px_rgba(136,22,28,0.08)]">
-                                        <Sparkles className="h-6 w-6 text-[#88161c]" />
-                                    </div>
-                                    <h2 className="text-3xl font-bold leading-[1.15] tracking-[-0.02em] md:text-4xl" style={headingStyle}>
-                                        What are you working on, {userFirstName}?
-                                    </h2>
-                                    <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#5B6473] sm:text-base">
-                                        Mulai percakapan, minta ringkasan materi, susun rencana belajar, atau eksplor ide tugas dengan AI Kolabri.
-                                    </p>
+                                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(136,22,28,0.14)] bg-[rgba(136,22,28,0.07)] shadow-[0_14px_32px_rgba(136,22,28,0.08)]">
+                                    <Sparkles className="h-6 w-6 text-[#88161c]" />
                                 </div>
+                                <h2 className="text-center text-2xl font-bold leading-[1.15] tracking-[-0.02em] sm:text-3xl" style={headingStyle}>
+                                    Apa yang sedang kamu kerjakan, {userFirstName}?
+                                </h2>
+                                <p className="mt-3 max-w-lg text-center text-sm leading-6 text-[#5B6473]">
+                                    Mulai percakapan, minta ringkasan materi, susun rencana belajar, atau eksplor ide tugas dengan AI Kolabri.
+                                </p>
                             </motion.div>
                         ) : (
                             <LiquidGlassCard intensity="light" className="flex-1 overflow-hidden p-5 lg:p-6" lightMode={true}>
-                                <div className="h-full space-y-4 overflow-y-auto">
-                                    {messages.map((message) => (
+                                <div
+                                    ref={messagesContainerRef}
+                                    className={`chat-scrollbar h-full space-y-4 overflow-y-auto pr-2 ${isMessagesScrolling ? 'is-scrolling' : ''}`}
+                                >
+                                    {isLoadingMessages ? (
+                                        <ChatSkeleton messageCount={4} />
+                                    ) : messages.map((message) => (
                                         <motion.div
                                             key={message.id}
                                             initial={{ opacity: 0, y: 10 }}
@@ -304,26 +555,41 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                     boxShadow: '0 12px 26px rgba(148,163,184,0.10)',
                                                 }}
                                             >
-                                                <p className={`text-sm whitespace-pre-wrap leading-7 ${message.role === 'user' ? 'text-white' : 'text-[#374151]'}`}>
-                                                    {message.content}
-                                                </p>
+                                                {message.role === 'assistant' ? (
+                                                    <div className="prose prose-sm max-w-none text-[#374151] leading-7 [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0.5 [&_strong]:text-[#1f2937] [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[#88161c] [&_pre]:rounded-xl [&_pre]:bg-gray-50 [&_pre]:p-3">
+                                                        <ReactMarkdown>{sanitizeHtml(formatAiOutput(message.content))}</ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm whitespace-pre-wrap leading-7 text-white">
+                                                        {message.content}
+                                                    </p>
+                                                )}
                                                 <p className={`mt-1 text-xs ${message.role === 'user' ? 'text-white/70' : 'text-[#6B7280]'}`}>
                                                     {formatTime(message.created_at)}
                                                 </p>
                                             </div>
                                         </motion.div>
                                     ))}
-                                    {isTyping && (
-                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5">
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                    {!isLoadingMessages && isStreaming && (
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2.5">
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
                                                 <Sparkles className="h-3.5 w-3.5" style={{ color: '#88161c' }} />
                                             </div>
-                                            <div className="rounded-[24px] px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.6)' }}>
-                                                <div className="flex gap-1">
-                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '0ms' }} />
-                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '150ms' }} />
-                                                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '300ms' }} />
-                                                </div>
+                                            <div className="max-w-[84%] rounded-[24px] px-4 py-3.5" style={{ background: 'rgba(255,255,255,0.82)', border: '1px solid rgba(255,255,255,0.82)', boxShadow: '0 12px 26px rgba(148,163,184,0.10)' }}>
+                                                {displayedStreamingContent ? (
+                                                    <div className="prose prose-sm max-w-none text-[#374151] leading-7 [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_li]:my-0.5 [&_strong]:text-[#1f2937] [&_code]:rounded [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[#88161c] [&_pre]:rounded-xl [&_pre]:bg-gray-50 [&_pre]:p-3">
+                                                        <ReactMarkdown>{sanitizeHtml(formatAiOutput(displayedStreamingContent))}</ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-1 py-1">
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '0ms' }} />
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '150ms' }} />
+                                                        <span className="h-2 w-2 animate-bounce rounded-full bg-[#6B7280]" style={{ animationDelay: '300ms' }} />
+                                                    </div>
+                                                )}
+                                                {displayedStreamingContent ? null : (
+                                                    <p className="mt-1 text-xs text-[#6B7280]">AI sedang memproses…</p>
+                                                )}
                                             </div>
                                         </motion.div>
                                     )}
@@ -332,53 +598,72 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                             </LiquidGlassCard>
                         )}
 
-                        <div className={`${isEmptyState ? 'mx-auto w-full max-w-4xl pb-4' : 'mt-auto pb-2'}`}>
-                        <LiquidGlassCard intensity="medium" className={`${isEmptyState ? 'p-4 lg:p-5' : 'p-4 lg:p-5'}`} lightMode={true}>
+                        {fetchError && (
+                            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                                        <X className="h-4 w-4 text-red-600" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-red-800">{fetchError}</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (activeChat?.id && jwtToken) {
+                                                    setFetchError(null);
+                                                    setIsLoadingMessages(true);
+                                                    fetchChatMessages(activeChat.id, jwtToken)
+                                                        .then(setLoadedMessages)
+                                                        .catch(err => setFetchError(err.message))
+                                                        .finally(() => setIsLoadingMessages(false));
+                                                }
+                                            }}
+                                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                                        >
+                                            <RefreshCw className="h-3 w-3" />
+                                            Coba Lagi
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className={`${isEmptyState ? 'mx-auto mt-8 w-full max-w-2xl pb-4' : 'mt-auto pb-2'}`}>
+                        <LiquidGlassCard intensity="medium" className="p-4 lg:p-5" lightMode={true}>
                             <form onSubmit={handleSendMessage}>
-                                {(messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat || pageProps.flash?.success) && (
+                                {(inputError || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat || (pageProps.flash?.success && showFlash)) && (
                                     <div className="mb-3 space-y-2 px-1">
-                                        {pageProps.flash?.success && (
-                                            <div className="rounded-2xl border px-3 py-2 text-sm font-medium text-emerald-700" style={{ background: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.18)' }}>
+                                        {pageProps.flash?.success && showFlash && (
+                                            <div className="rounded-2xl border px-3 py-2 text-sm font-medium text-[#88161c] transition-opacity" style={{ background: 'rgba(136,22,28,0.06)', borderColor: 'rgba(136,22,28,0.14)' }}>
                                                 {pageProps.flash.success}
                                             </div>
                                         )}
-                                        {(messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat) && (
+                                        {(inputError || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat) && (
                                             <div className="rounded-2xl border px-3 py-2 text-sm font-medium text-red-700" style={{ background: 'rgba(220,38,38,0.08)', borderColor: 'rgba(220,38,38,0.18)' }}>
-                                                {messageForm.errors.content || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat}
+                                                {inputError || titleForm.errors.title || pageErrors.content || pageErrors.title || pageErrors.chat}
                                             </div>
                                         )}
                                     </div>
                                 )}
-                                <div className={`flex flex-wrap gap-2 px-1 ${isEmptyState ? 'mb-4 justify-start' : 'mb-2.5'}`}>
-                                    {(isEmptyState ? emptyStateCards : quickActions).map((item, index) => {
-                                        const action = typeof item === 'string' ? item : item.eyebrow;
-                                        const prompt = typeof item === 'string'
-                                            ? action === 'Deep Research'
-                                                ? 'Lakukan riset mendalam tentang topik ini dan jelaskan temuan utamanya.'
-                                                : action === 'Ringkas Materi'
-                                                    ? 'Ringkas materi ini menjadi poin-poin yang mudah dipahami.'
-                                                    : action === 'Buat Rencana'
-                                                        ? 'Bantu saya membuat rencana langkah demi langkah untuk menyelesaikan tugas ini.'
-                                                        : 'Berikan beberapa ide tugas atau topik diskusi yang relevan untuk materi ini.'
-                                            : item.prompt;
-
-                                        return (
-                                        <button
-                                            key={`${action}-${index}`}
-                                            type="button"
-                                            onClick={() => prefillPrompt(prompt)}
-                                            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[rgba(136,22,28,0.10)] sm:text-sm ${isEmptyState ? 'shadow-[0_8px_22px_rgba(148,163,184,0.08)]' : ''}`}
-                                            style={{
-                                                color: '#88161c',
-                                                background: 'rgba(136,22,28,0.08)',
-                                                border: '1px solid rgba(136,22,28,0.14)',
-                                            }}
-                                        >
-                                            {action}
-                                        </button>
-                                        );
-                                    })}
-                                </div>
+                                {isEmptyState && (
+                                    <div className="mb-4 flex flex-wrap gap-2 px-1">
+                                        {emptyStateCards.map((item, index) => (
+                                            <button
+                                                key={`${item.eyebrow}-${index}`}
+                                                type="button"
+                                                onClick={() => prefillPrompt(item.prompt)}
+                                                className="rounded-full px-3 py-1.5 text-xs font-medium shadow-[0_8px_22px_rgba(148,163,184,0.08)] transition-colors hover:bg-[rgba(136,22,28,0.10)] sm:text-sm"
+                                                style={{
+                                                    color: '#88161c',
+                                                    background: 'rgba(136,22,28,0.08)',
+                                                    border: '1px solid rgba(136,22,28,0.14)',
+                                                }}
+                                            >
+                                                {item.eyebrow}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <div className="rounded-[24px] border bg-white/92 px-3 py-2.5 shadow-[0_14px_32px_rgba(148,163,184,0.10)]" style={{ borderColor: 'rgba(226,232,240,0.9)' }}>
                                     <div className="flex items-center gap-2.5">
                                         <button
@@ -391,10 +676,10 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                         </button>
                                         <textarea
                                             ref={inputRef}
-                                            value={messageForm.data.content}
-                                            onChange={(e) => messageForm.setData('content', e.target.value)}
+                                            value={inputValue}
+                                            onChange={(e) => { setInputValue(e.target.value); setInputError(''); }}
                                             onKeyDown={handleKeyDown}
-                                            placeholder={isEmptyState ? 'Ask anything about your coursework, ideas, or study plan' : 'Contoh: "Jelaskan konsep ini dengan sederhana"'}
+                                            placeholder={isEmptyState ? 'Tanyakan apa saja tentang tugas, ide, atau rencana belajarmu' : 'Ketik pesan...'}
                                             rows={1}
                                             className="min-h-[40px] flex-1 resize-none overflow-hidden bg-transparent px-1 py-2.5 text-sm leading-6 text-[#374151] placeholder-[#7B8494] focus:outline-none"
                                             style={{ height: '40px' }}
@@ -406,14 +691,14 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                         />
                                         <button
                                             type="submit"
-                                            disabled={!messageForm.data.content.length || messageForm.processing}
+                                            disabled={!inputValue.length || isStreaming}
                                             className="flex h-10 w-10 flex-shrink-0 items-center justify-center self-center rounded-full text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
                                             style={{
                                                 background: 'linear-gradient(135deg, rgba(164,18,25,0.92) 0%, rgba(136,22,28,0.96) 100%)',
                                                 boxShadow: '0 10px 20px rgba(136,22,28,0.16)',
                                             }}
                                         >
-                                            {messageForm.processing ? (
+                                            {isStreaming ? (
                                                 <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />

@@ -78,15 +78,19 @@ export default function FaqSection({ lightMode }: Props) {
                                 key={i}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
+                                whileHover={{ y: -3 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.5, delay: i * 0.08, ease: [0.25, 0.1, 0.25, 1] }}
+                                layout
                             >
                                 <LiquidGlassCard intensity="light" lightMode={lightMode} className="overflow-hidden">
                                     {/* Question button */}
-                                    <button
+                                    <motion.button
                                         onClick={() => toggle(i)}
                                         className="flex w-full items-center justify-between px-6 py-5 text-left"
                                         aria-expanded={openIndex === i}
+                                        whileTap={{ scale: 0.995 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 34 }}
                                     >
                                         <span
                                             className="pr-4 text-sm font-medium md:text-base"
@@ -96,12 +100,12 @@ export default function FaqSection({ lightMode }: Props) {
                                         </span>
                                         <motion.span
                                             animate={{ rotate: openIndex === i ? 180 : 0 }}
-                                            transition={{ duration: 0.25 }}
+                                            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
                                             className="shrink-0"
                                         >
                                             <ChevronDown size={18} style={{ color: '#88161c' }} />
                                         </motion.span>
-                                    </button>
+                                    </motion.button>
 
                                     {/* Answer */}
                                     <AnimatePresence initial={false}>
@@ -110,7 +114,7 @@ export default function FaqSection({ lightMode }: Props) {
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                                                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                                             >
                                                 <div className="border-t px-6 pb-5 pt-4" style={{ borderColor: lightMode ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
                                                     <p className="text-sm leading-relaxed text-[#6B7280]">{faq.answer}</p>

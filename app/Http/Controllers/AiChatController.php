@@ -49,9 +49,17 @@ class AiChatController extends Controller
             $activeChat = null;
             if ($chatId) {
                 $activeChatResponse = $this->apiRequest()->get($this->apiUrl() . "/api/ai-chats/{$chatId}");
-                $activeChat = $activeChatResponse->successful()
-                    ? $this->normalizeChat($activeChatResponse->json('data'))
-                    : null;
+                if ($activeChatResponse->successful()) {
+                    $chatData = $activeChatResponse->json('data');
+                    $activeChat = [
+                        'id' => $chatData['id'],
+                        'title' => $chatData['title'],
+                        'createdAt' => $chatData['createdAt'] ?? $chatData['created_at'] ?? null,
+                        'updatedAt' => $chatData['updatedAt'] ?? $chatData['updated_at'] ?? null,
+                        'created_at' => $chatData['createdAt'] ?? $chatData['created_at'] ?? null,
+                        'updated_at' => $chatData['updatedAt'] ?? $chatData['updated_at'] ?? null,
+                    ];
+                }
             }
         } catch (\Exception $e) {
             Log::error('Failed to fetch AI chats', ['error' => $e->getMessage()]);
@@ -87,6 +95,10 @@ class AiChatController extends Controller
             if ($response->successful()) {
                 $chat = $response->json('data');
 
+                if ($request->wantsJson()) {
+                    return response()->json(['id' => $chat['id']]);
+                }
+
                 if (!empty($validated['first_message'])) {
                     $messageResponse = $this->apiRequest()->post(
                         $this->apiUrl() . "/api/ai-chats/{$chat['id']}/messages",
@@ -101,13 +113,21 @@ class AiChatController extends Controller
                     }
                 }
 
-                return redirect()->route('student.ai-chat.show', $chat['id'])
-                    ->with('success', !empty($validated['first_message']) ? 'Chat baru dibuat dan pesan pertama berhasil dikirim!' : 'Chat baru dibuat!');
+                return redirect()->route('student.ai-chat.show', $chat['id']);
+            }
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $response->json('message', 'Gagal membuat chat')], 422);
             }
 
             return back()->withErrors(['title' => $response->json('message', 'Gagal membuat chat')]);
         } catch (\Exception $e) {
             Log::error('AI Chat creation failed', ['error' => $e->getMessage()]);
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Tidak dapat membuat chat'], 500);
+            }
+
             return back()->withErrors(['title' => 'Tidak dapat membuat chat']);
         }
     }
@@ -118,6 +138,35 @@ class AiChatController extends Controller
     public function show(string $chatId): Response
     {
         return $this->index($chatId);
+    }
+
+    public function messages(string $chatId)
+    {
+        try {
+            $response = $this->apiRequest()->get($this->apiUrl() . "/api/ai-chats/{$chatId}/messages");
+
+            if ($response->successful()) {
+                return response()->json([
+                    'data' => $response->json('data', []),
+                ]);
+            }
+
+            return response()->json([
+                'error' => $response->json('error') ?? [
+                    'code' => 'FETCH_MESSAGES_FAILED',
+                    'message' => 'Gagal memuat pesan chat',
+                ],
+            ], $response->status());
+        } catch (\Exception $e) {
+            Log::error('Fetch AI chat messages failed', ['error' => $e->getMessage(), 'chat_id' => $chatId]);
+
+            return response()->json([
+                'error' => [
+                    'code' => 'FETCH_MESSAGES_FAILED',
+                    'message' => 'Tidak dapat memuat pesan chat',
+                ],
+            ], 500);
+        }
     }
 
     /**
@@ -144,6 +193,53 @@ class AiChatController extends Controller
             Log::error('Send AI message failed', ['error' => $e->getMessage()]);
             return back()->withErrors(['content' => 'Tidak dapat mengirim pesan']);
         }
+    }
+
+    public function streamMessage(Request $request, string $chatId)
+    {
+        $content = $request->input('content', '');
+        if (empty($content)) {
+            return response()->json(['error' => 'Content is required'], 422);
+        }
+
+        $jwt = session('jwt');
+        if (empty($jwt)) {
+            return response()->json(['error' => 'Not authenticated'], 401);
+        }
+
+        return response()->stream(function () use ($content, $chatId, $jwt) {
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+
+            $url = $this->apiUrl() . "/api/ai-chats/{$chatId}/messages/stream";
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode(['content' => $content]),
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $jwt,
+                    'Accept: text/event-stream',
+                ],
+                CURLOPT_RETURNTRANSFER => false,
+                CURLOPT_WRITEFUNCTION => function ($ch, $data) {
+                    echo $data;
+                    flush();
+                    return strlen($data);
+                },
+                CURLOPT_TIMEOUT => 120,
+            ]);
+
+            curl_exec($ch);
+            curl_close($ch);
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 
     /**

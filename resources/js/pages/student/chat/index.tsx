@@ -9,6 +9,7 @@ import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, SharedData, LearningGoal } from '@/types';
 import student from '@/routes/student';
 import { LiquidGlassCard } from '@/components/Welcome/utils/helpers';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 interface GroupMember {
     id: string;
@@ -159,6 +160,7 @@ const headingStyle = {
 
 export default function StudentChatIndex({ course, group, goal, hasGoal, socketUrl }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const [jwtToken, setJwtToken] = useState('');
     const navItems = useStudentNav('chat-room', { courseId: course.id });
     const [messages, setMessages] = useState<DisplayMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -169,7 +171,11 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
     const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
     const [isScrolling, setIsScrolling] = useState(false);
     const [showGoalBanner, setShowGoalBanner] = useState(!hasGoal);
-    
+
+    useEffect(() => {
+        getAuthToken().then(setJwtToken).catch(console.error);
+    }, []);
+
     // Chat space state - default to first chat space
     const [activeChatSpaceId] = useState<string | null>(
         group.chatSpaces?.[0]?.id || null
@@ -247,7 +253,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
     }, [messages]);
 
     useEffect(() => {
-        if (!auth.token) {
+        if (!jwtToken) {
             setConnectionError('No authentication token available');
             return;
         }
@@ -260,7 +266,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
         const apiUrl = socketUrl || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         socketRef.current = io(apiUrl, {
-            auth: { token: auth.token },
+            auth: { token: jwtToken },
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
@@ -363,7 +369,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
             socketRef.current?.emit('leave_room', roomId);
             socketRef.current?.disconnect();
         };
-    }, [auth.token, course?.id, group?.id, activeChatSpace?.id, socketUrl]);
+    }, [jwtToken, course?.id, group?.id, activeChatSpace?.id, socketUrl]);
 
     // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
@@ -898,7 +904,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
                         <div className="flex h-full flex-col">
                             <div 
                                 ref={messagesContainerRef}
-                                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 ${isScrolling ? 'is-scrolling' : ''}`}
+                                    className={`scrollbar-stable min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 ${isScrolling ? 'is-scrolling' : ''}`}
                             >
                                 <LayoutGroup>
                                     <div className="space-y-1">
@@ -973,6 +979,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
                                                                                         src={attachment.url} 
                                                                                         alt={attachment.name}
                                                                                         className="max-h-32 max-w-[180px] rounded-xl object-cover transition-transform hover:scale-105 sm:max-h-48 sm:max-w-[250px]"
+                                                                                        loading="lazy"
                                                                                         onError={(e) => {
                                                                                             // Fallback if image fails to load
                                                                                             (e.target as HTMLImageElement).style.display = 'none';
@@ -1183,7 +1190,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
                                                 >
                                                     {pf.preview ? (
                                                         <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/50 sm:h-20 sm:w-20">
-                                                            <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" />
+                                                            <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" loading="lazy" />
                                                             <button
                                                                 onClick={() => removePendingFile(pf.id)}
                                                                 className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
@@ -1705,6 +1712,7 @@ export default function StudentChatIndex({ course, group, goal, hasGoal, socketU
                                 alt={previewImage.name}
                                 className="max-h-[75vh] max-w-[95vw] object-contain transition-transform duration-200 sm:max-h-[80vh] sm:max-w-[90vw]"
                                 style={{ transform: `scale(${imageZoom})` }}
+                                loading="lazy"
                                 draggable={false}
                             />
                         </motion.div>

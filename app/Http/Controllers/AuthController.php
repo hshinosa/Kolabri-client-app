@@ -46,16 +46,17 @@ class AuthController extends Controller
             if ($response->successful()) {
                 $data = $response->json('data');
 
-                // Store JWT in HTTP-only session (secure)
                 session([
-                    'jwt' => $data['token'],
+                    'jwt' => $data['accessToken'],
+                    'refresh_token' => $data['refreshToken'],
                     'user' => $data['user'],
                 ]);
 
-                // Redirect based on role
-                $redirectRoute = $data['user']['role'] === 'lecturer' 
-                    ? 'lecturer.courses.index' 
-                    : 'student.courses.index';
+                $redirectRoute = $data['user']['role'] === 'admin'
+                    ? 'admin.dashboard'
+                    : ($data['user']['role'] === 'lecturer'
+                        ? 'lecturer.courses.index'
+                        : 'student.courses.index');
 
                 return redirect()->route($redirectRoute)->with('success', 'Welcome back!');
             }
@@ -89,7 +90,7 @@ class AuthController extends Controller
             'name' => 'required|min:2|max:255',
             'email' => 'required|email|max:255',
             'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:lecturer,student',
+            'role' => 'required|in:admin,lecturer,student',
         ]);
 
         try {
@@ -103,16 +104,17 @@ class AuthController extends Controller
             if ($response->successful()) {
                 $data = $response->json('data');
 
-                // Store JWT in session
                 session([
-                    'jwt' => $data['token'],
+                    'jwt' => $data['accessToken'],
+                    'refresh_token' => $data['refreshToken'],
                     'user' => $data['user'],
                 ]);
 
-                // Redirect based on role
-                $redirectRoute = $data['user']['role'] === 'lecturer' 
-                    ? 'lecturer.courses.index' 
-                    : 'student.courses.index';
+                $redirectRoute = $data['user']['role'] === 'admin'
+                    ? 'admin.dashboard'
+                    : ($data['user']['role'] === 'lecturer'
+                        ? 'lecturer.courses.index'
+                        : 'student.courses.index');
 
                 return redirect()->route($redirectRoute)->with('success', 'Account created successfully!');
             }
@@ -145,11 +147,46 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Clear session
-        session()->forget(['jwt', 'user']);
+        $refreshToken = session('refresh_token');
+        
+        if ($refreshToken) {
+            try {
+                Http::post($this->apiUrl() . '/api/auth/logout', [
+                    'refreshToken' => $refreshToken,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Logout API call failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        session()->forget(['jwt', 'refresh_token', 'user']);
         session()->invalidate();
         session()->regenerateToken();
 
         return redirect()->route('auth.login.index')->with('success', 'Logged out successfully');
+    }
+
+    /**
+     * Get JWT token for authenticated user
+     * Used by frontend for Socket.IO and real-time features
+     */
+    public function getToken(Request $request)
+    {
+        $token = session('jwt');
+
+        if (!$token) {
+            return response()->json([
+                'error' => [
+                    'code' => 'UNAUTHORIZED',
+                    'message' => 'No active session',
+                ],
+            ], 401);
+        }
+
+        return response()->json([
+            'data' => [
+                'token' => $token,
+            ],
+        ]);
     }
 }

@@ -6,6 +6,7 @@ import { LogOut, Menu, X } from 'lucide-react';
 import { SharedData } from '@/types';
 import auth from '@/routes/auth';
 import { OrganicBlob } from '@/components/Welcome/utils/helpers';
+import { AdminNav } from '@/components/navigation/admin-nav';
 
 interface NavSubItem {
     name: string;
@@ -154,7 +155,7 @@ export default function AppLayout({ children, title, navItems = [] }: AppLayoutP
         <div 
             className="relative flex h-screen overflow-hidden"
             style={{
-                background: 'linear-gradient(135deg, #f5f0f0 0%, #e8e4f0 50%, #f0e8e8 100%)',
+                background: 'linear-gradient(135deg, #E8EDF8 0%, #EDF0F7 50%, #E8EDF8 100%)',
             }}
         >
             {/* Decorative blobs */}
@@ -204,7 +205,7 @@ export default function AppLayout({ children, title, navItems = [] }: AppLayoutP
                         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
                             Menu
                         </p>
-                        {navItems.map((item) => renderNavItem(item, false))}
+                        {user?.role === 'admin' ? <AdminNav /> : navItems.map((item) => renderNavItem(item, false))}
                     </nav>
 
                     {/* User Info */}
@@ -317,7 +318,11 @@ export default function AppLayout({ children, title, navItems = [] }: AppLayoutP
                                     <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-[#6B7280] sm:mb-3">
                                         Menu
                                     </p>
-                                    {navItems.map((item) => renderNavItem(item, true))}
+                                    {user?.role === 'admin' ? (
+                                        <AdminNav isMobile={true} onNavigate={() => setSidebarOpen(false)} />
+                                    ) : (
+                                        navItems.map((item) => renderNavItem(item, true))
+                                    )}
                                 </nav>
 
                                 {/* User Info */}

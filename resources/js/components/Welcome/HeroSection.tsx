@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { BookOpen, ChevronRight, GraduationCap, Users } from 'lucide-react';
-import { HeroDashboard, OrganicBlob, PrimaryButton, SecondaryButton } from './utils/helpers';
+import { HeroDashboard, OrganicBlob, PrimaryButton, SecondaryButton, useReducedMotion } from './utils/helpers';
 
 type Props = { lightMode: boolean };
 
 export default function HeroSection({ lightMode }: Props) {
+    const prefersReducedMotion = useReducedMotion();
+
     return (
         <>
             {/* ========== HERO SECTION ========== */}
@@ -14,46 +16,53 @@ export default function HeroSection({ lightMode }: Props) {
                     className="pointer-events-none absolute inset-0"
                     style={{
                         backgroundImage: lightMode
-                            ? `linear-gradient(rgba(0,0,0,0.12) 1px, transparent 1px),
-                                   linear-gradient(90deg, rgba(0,0,0,0.12) 1px, transparent 1px)`
-                            : `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                                   linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-                        backgroundSize: '32px 32px',
-                        maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 90%)',
-                        WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 90%)',
+                            ? `linear-gradient(rgba(0,0,0,0.07) 1px, transparent 1px),
+                                   linear-gradient(90deg, rgba(0,0,0,0.07) 1px, transparent 1px)`
+                            : `linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+                                   linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+                        backgroundSize: '36px 36px',
+                        maskImage: 'radial-gradient(ellipse at center, black 42%, transparent 85%)',
+                        WebkitMaskImage: 'radial-gradient(ellipse at center, black 42%, transparent 85%)',
                     }}
                 />
 
-                {/* Organic blobs - layered depth */}
-                <OrganicBlob className="top-0 left-0" delay={0} color="rgba(136, 22, 28, 0.06)" size={600} />
-                <OrganicBlob className="top-1/4 right-0" delay={-5} color="rgba(136, 22, 28, 0.04)" size={500} />
-                <OrganicBlob className="bottom-0 left-1/4" delay={-10} color="rgba(74, 74, 74, 0.04)" size={400} />
-                <OrganicBlob className="top-1/2 right-1/4" delay={-7} color="rgba(136, 22, 28, 0.03)" size={300} />
+                {/* Organic blobs - calmer layered depth */}
+                <OrganicBlob className="top-0 left-0" delay={0} color="rgba(136, 22, 28, 0.045)" size={560} />
+                <OrganicBlob className="top-1/3 right-0" delay={-6} color="rgba(136, 22, 28, 0.03)" size={420} />
+                <OrganicBlob className="bottom-0 left-1/4" delay={-9} color="rgba(74, 74, 74, 0.03)" size={340} />
 
                 {/* Central refractive orb */}
                 <motion.div
                     className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                    animate={{
-                        scale: [1, 1.05, 1],
-                        rotate: [0, 2, -2, 0],
-                    }}
-                    transition={{
-                        duration: 15,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                    }}
+                    animate={
+                        prefersReducedMotion
+                            ? { scale: 1, rotate: 0 }
+                            : {
+                                  scale: [1, 1.025, 1],
+                                  rotate: [0, 0.8, -0.8, 0],
+                              }
+                    }
+                    transition={
+                        prefersReducedMotion
+                            ? { duration: 0.3 }
+                            : {
+                                  duration: 22,
+                                  repeat: Infinity,
+                                  ease: 'easeInOut',
+                              }
+                    }
                 >
                     <div
                         className="rounded-full"
                         style={{
-                            width: 800,
-                            height: 800,
+                            width: 720,
+                            height: 720,
                             background: `
-                            radial-gradient(ellipse at 30% 30%, rgba(136,22,28,0.06) 0%, transparent 50%),
-                            radial-gradient(ellipse at 70% 70%, rgba(136,22,28,0.04) 0%, transparent 50%),
-                            radial-gradient(ellipse at 50% 50%, rgba(74,74,74,0.03) 0%, transparent 50%)
+                            radial-gradient(ellipse at 30% 30%, rgba(136,22,28,0.045) 0%, transparent 52%),
+                            radial-gradient(ellipse at 70% 70%, rgba(136,22,28,0.03) 0%, transparent 52%),
+                            radial-gradient(ellipse at 50% 50%, rgba(74,74,74,0.025) 0%, transparent 50%)
                         `,
-                            filter: 'blur(60px)',
+                            filter: 'blur(72px)',
                         }}
                     />
                 </motion.div>
@@ -132,7 +141,7 @@ export default function HeroSection({ lightMode }: Props) {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 1.2, duration: 0.6 }}
-                                className="mt-12"
+                                className="mt-12 flex justify-center"
                             >
                                 <div
                                     className="flex w-fit flex-wrap items-center justify-center gap-4 rounded-2xl px-6 py-4"
@@ -153,9 +162,18 @@ export default function HeroSection({ lightMode }: Props) {
                                         { icon: <BookOpen className="h-4 w-4" />, text: 'Proyek Akademik' },
                                         { icon: <Users className="h-4 w-4" />, text: 'Untuk Dosen & Mahasiswa' },
                                     ].map((item, i) => (
-                                        <div
+                                        <motion.div
                                             key={i}
                                             className="flex items-center gap-2"
+                                            initial={{ opacity: 0, y: 3 }}
+                                            animate={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 1, y: [0, -1.5, 0] }}
+                                            transition={{
+                                                delay: 1.25 + i * 0.08,
+                                                opacity: { duration: 0.35 },
+                                                y: prefersReducedMotion
+                                                    ? { duration: 0.3 }
+                                                    : { duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: i * 0.25 },
+                                            }}
                                         >
                                             <div className="text-[#88161c]">{item.icon}</div>
                                             <span className="text-sm font-medium" style={{ color: lightMode ? '#4A4A4A' : '#cbd5e1' }}>
@@ -167,7 +185,7 @@ export default function HeroSection({ lightMode }: Props) {
                                                     style={{ background: lightMode ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' }}
                                                 />
                                             )}
-                                        </div>
+                                        </motion.div>
                                     ))}
                                 </div>
                             </motion.div>
@@ -176,8 +194,13 @@ export default function HeroSection({ lightMode }: Props) {
                         {/* Dashboard Preview */}
                         <motion.div
                             initial={{ opacity: 0, y: 60 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6, duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
+                            animate={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 1, y: [0, -4, 0] }}
+                            transition={{
+                                opacity: { delay: 0.6, duration: 1, ease: [0.25, 0.1, 0.25, 1] },
+                                y: prefersReducedMotion
+                                    ? { duration: 0.3 }
+                                    : { delay: 1.6, duration: 8, repeat: Infinity, ease: 'easeInOut' },
+                            }}
                             className="mt-20 w-full max-w-7xl"
                         >
                             <HeroDashboard lightMode={lightMode} />
@@ -194,8 +217,8 @@ export default function HeroSection({ lightMode }: Props) {
                     aria-hidden="true"
                 >
                     <motion.div
-                        animate={{ y: [0, 8, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        animate={prefersReducedMotion ? { y: 0 } : { y: [0, 8, 0] }}
+                        transition={prefersReducedMotion ? { duration: 0.3 } : { duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                         className="flex flex-col items-center gap-2"
                     >
                         <span className="text-xs tracking-widest text-[#6B7280]/60 uppercase">Gulir</span>

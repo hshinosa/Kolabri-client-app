@@ -22,6 +22,10 @@ class RoleMiddleware
             }
 
             // Redirect to appropriate dashboard based on actual role
+            if ($user && $user['role'] === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
             if ($user && $user['role'] === 'lecturer') {
                 return redirect()->route('lecturer.courses.index');
             }

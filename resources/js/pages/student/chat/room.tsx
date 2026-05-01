@@ -9,6 +9,7 @@ import { useStudentNav } from '@/components/navigation/student-nav';
 import { Course, SharedData } from '@/types';
 import student from '@/routes/student';
 import { LiquidGlassCard } from '@/components/Welcome/utils/helpers';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 interface GroupMember {
     id: string;
@@ -181,6 +182,7 @@ const headingStyle = {
 
 export default function StudentChatRoom({ course, group, chatSpace, socketUrl }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const [jwtToken, setJwtToken] = useState('');
     const navItems = useStudentNav('chat-room', { courseId: course.id });
     const hasGoal = !!chatSpace.myGoal;
     const goal = chatSpace.myGoal;
@@ -196,6 +198,10 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
+
+    useEffect(() => {
+        getAuthToken().then(setJwtToken).catch(console.error);
+    }, []);
     const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
     const [isScrolling, setIsScrolling] = useState(false);
     const [showGoalBanner, setShowGoalBanner] = useState(!hasGoal);
@@ -322,11 +328,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
     }, [messages]);
 
     useEffect(() => {
-        if (!auth.token) {
-            setConnectionError('No authentication token available');
-            return;
-        }
-
+        if (!jwtToken) return;
         if (!course?.id || !group?.id || !chatSpace?.id) {
             setConnectionError('Missing course, group, or chat space information');
             return;
@@ -335,7 +337,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         const apiUrl = socketUrl || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         socketRef.current = io(apiUrl, {
-            auth: { token: auth.token },
+            auth: { token: jwtToken },
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionAttempts: 5,
@@ -480,7 +482,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
             socketRef.current?.emit('leave_room', roomId);
             socketRef.current?.disconnect();
         };
-    }, [auth.token, course?.id, group?.id, chatSpace?.id, socketUrl]);
+    }, [jwtToken, course?.id, group?.id, chatSpace?.id, socketUrl]);
 
     useEffect(() => {
         return () => {
@@ -830,20 +832,20 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
 
     const handleCloseSession = useCallback(async () => {
         if (sessionClosed || isClosingSession) return;
-        if (!auth.token) {
-            showCloseError('Token otentikasi tidak tersedia. Silakan masuk ulang.');
+        if (!jwtToken) {
+            showCloseError('Authentication required');
             return;
         }
 
         setIsClosingSession(true);
         setCloseSessionError(null);
-        setShowCloseConfirmModal(false);
 
         try {
             const response = await fetch(`${apiBaseUrl}/api/chat-spaces/${chatSpace.id}/close`, {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${auth.token}`,
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${jwtToken}`,
                 },
             });
 
@@ -857,7 +859,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
         } finally {
             setIsClosingSession(false);
         }
-    }, [sessionClosed, isClosingSession, apiBaseUrl, chatSpace.id, auth.token, showCloseError]);
+    }, [sessionClosed, isClosingSession, apiBaseUrl, chatSpace.id, jwtToken, showCloseError]);
 
     const handleOpenCloseConfirmModal = useCallback(() => {
         if (sessionClosed || isClosingSession) return;
@@ -900,7 +902,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${auth.token}`,
+                    'Authorization': `Bearer ${jwtToken}`,
                 },
                 body: JSON.stringify({ content: reflectionContent }),
             });
@@ -1193,7 +1195,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                         <div className="flex h-full flex-col">
                             <div 
                                 ref={messagesContainerRef}
-                                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 ${isScrolling ? 'is-scrolling' : ''}`}
+                                                    className={`scrollbar-stable min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 ${isScrolling ? 'is-scrolling' : ''}`}
                             >
                                 <LayoutGroup>
                                     <div className="space-y-1">
@@ -1268,7 +1270,9 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                                                                         src={attachment.url} 
                                                                                         alt={attachment.name}
                                                                                         className="max-h-32 max-w-[180px] rounded-xl object-cover transition-transform hover:scale-105 sm:max-h-48 sm:max-w-[250px]"
+                                                                                        loading="lazy"
                                                                                         onError={(e) => {
+                                                                                            // Fallback if image fails to load
                                                                                             (e.target as HTMLImageElement).style.display = 'none';
                                                                                         }}
                                                                                     />
@@ -1483,7 +1487,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                                 >
                                                     {pf.preview ? (
                                                         <div className="relative h-16 w-16 overflow-hidden rounded-xl border border-white/50 sm:h-20 sm:w-20">
-                                                            <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" />
+                                                            <img src={pf.preview} alt={pf.file.name} className="h-full w-full object-cover" loading="lazy" />
                                                             <button
                                                                 onClick={() => removePendingFile(pf.id)}
                                                                 className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
@@ -2244,6 +2248,7 @@ export default function StudentChatRoom({ course, group, chatSpace, socketUrl }:
                                 alt={previewImage.name}
                                 className="max-h-[75vh] max-w-[95vw] object-contain transition-transform duration-200 sm:max-h-[80vh] sm:max-w-[90vw]"
                                 style={{ transform: `scale(${imageZoom})` }}
+                                loading="lazy"
                                 draggable={false}
                             />
                         </motion.div>

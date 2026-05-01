@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { LiquidGlassCard, PrimaryButton, SecondaryButton } from './utils/helpers';
+import { LiquidGlassCard, PrimaryButton, SecondaryButton, useReducedMotion } from './utils/helpers';
 
 type Props = { lightMode: boolean };
 
 export default function CtaSection({ lightMode }: Props) {
+    const prefersReducedMotion = useReducedMotion();
+
     return (
         <>
             {/* ========== CTA SECTION ========== */}
@@ -12,13 +14,21 @@ export default function CtaSection({ lightMode }: Props) {
                 {/* Decorative CTA Background Glows */}
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
                     <motion.div
-                        animate={{
-                            scale: [1, 1.2, 1],
-                            opacity: [0.3, 0.5, 0.3],
-                        }}
-                        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                        className="absolute h-[500px] w-[500px] rounded-full blur-[100px]"
-                        style={{ background: lightMode ? 'rgba(136,22,28,0.1)' : 'rgba(164,18,25,0.15)' }}
+                        animate={
+                            prefersReducedMotion
+                                ? { scale: 1, opacity: 0.2 }
+                                : {
+                                      scale: [1, 1.08, 1],
+                                      opacity: [0.2, 0.3, 0.2],
+                                  }
+                        }
+                        transition={
+                            prefersReducedMotion
+                                ? { duration: 0.3 }
+                                : { duration: 12, repeat: Infinity, ease: 'easeInOut' }
+                        }
+                        className="absolute h-[440px] w-[440px] rounded-full blur-[120px]"
+                        style={{ background: lightMode ? 'rgba(136,22,28,0.08)' : 'rgba(164,18,25,0.12)' }}
                     />
                 </div>
 

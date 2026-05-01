@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LiquidGlassCard, StepCard } from './utils/helpers';
+import { LiquidGlassCard, StepCard, useReducedMotion } from './utils/helpers';
 
 type Props = { lightMode: boolean };
 
@@ -10,14 +10,24 @@ const steps = [
 ];
 
 export default function HowItWorksSection({ lightMode }: Props) {
+    const prefersReducedMotion = useReducedMotion();
+
     return (
         <>
             {/* ========== HOW IT WORKS SECTION ========== */}
             <section id="cara-kerja" className="relative py-32">
                 {/* Decorative floating shapes */}
                 <motion.div
-                    animate={{ scale: [1, 1.1, 1], rotate: [0, 90, 0] }}
-                    transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+                    animate={
+                        prefersReducedMotion
+                            ? { scale: 1, rotate: 0 }
+                            : { scale: [1, 1.1, 1], rotate: [0, 90, 0] }
+                    }
+                    transition={
+                        prefersReducedMotion
+                            ? { duration: 0.3 }
+                            : { duration: 15, repeat: Infinity, ease: 'linear' }
+                    }
                     className="pointer-events-none absolute top-1/3 -left-20 h-96 w-96 rounded-full opacity-10 blur-3xl"
                     style={{
                         background: lightMode
@@ -26,8 +36,8 @@ export default function HowItWorksSection({ lightMode }: Props) {
                     }}
                 />
                 <motion.div
-                    animate={{ y: [0, -40, 0] }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={prefersReducedMotion ? { y: 0 } : { y: [0, -40, 0] }}
+                    transition={prefersReducedMotion ? { duration: 0.3 } : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
                     className="pointer-events-none absolute right-10 bottom-1/4 h-48 w-48 rounded-full opacity-20 blur-2xl"
                     style={{ background: lightMode ? 'rgba(234,179,8,0.08)' : 'rgba(245,158,11,0.1)' }}
                 />

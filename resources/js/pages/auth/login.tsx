@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEvent, ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
 import { InputError } from '@/components/ui/input-error';
 import GuestLayout, { useTheme } from '@/layouts/guest-layout';
@@ -24,24 +25,29 @@ export default function Login() {
         <>
             <Head title="Masuk" />
 
-            <div className="w-full">
-                <LiquidGlassCard intensity="medium" lightMode={lightMode} className="w-full p-8 transition-colors duration-500">
-                    <div className="mb-8 text-center">
+            <motion.div
+                className="w-full"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+                <LiquidGlassCard intensity="medium" lightMode={lightMode} className="w-full p-8 sm:p-10 transition-colors duration-500">
+                    <div className="mb-6 text-center">
                         <h1
-                            className="text-2xl font-bold transition-colors duration-500"
+                            className="text-2xl font-bold tracking-tight transition-colors duration-500"
                             style={{ color: lightMode ? '#4A4A4A' : '#f8fafc' }}
                         >
                             Selamat Datang Kembali
                         </h1>
                         <p
-                            className="mt-2 text-sm transition-colors duration-500"
+                            className="mt-1.5 text-sm transition-colors duration-500"
                             style={{ color: lightMode ? '#6B7280' : '#94a3b8' }}
                         >
                             Masuk untuk melanjutkan perjalanan belajar Anda
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div>
                             <label 
                                 htmlFor="email" 
@@ -141,7 +147,7 @@ export default function Login() {
                         </Link>
                     </p>
                 </LiquidGlassCard>
-            </div>
+            </motion.div>
         </>
     );
 }

@@ -1,11 +1,13 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEvent, ReactNode } from 'react';
+import { FormEvent, ReactNode, useEffect } from 'react';
+import { motion } from 'framer-motion';
 
 import { InputError } from '@/components/ui/input-error';
 import GuestLayout, { useTheme } from '@/layouts/guest-layout';
 import { LiquidGlassCard, PrimaryButton } from '@/components/Welcome/utils/helpers';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
+import { setupCsrfRefresh } from '@/lib/csrfRefresh';
 
 export default function Register() {
     const { lightMode } = useTheme();
@@ -16,6 +18,11 @@ export default function Register() {
         password_confirmation: '',
         role: 'student' as 'student' | 'lecturer',
     });
+
+    useEffect(() => {
+        const cleanup = setupCsrfRefresh(60);
+        return cleanup;
+    }, []);
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -32,24 +39,29 @@ export default function Register() {
         <>
             <Head title="Buat Akun" />
 
-            <div className="w-full">
-                <LiquidGlassCard intensity="medium" lightMode={lightMode} className="w-full p-8 transition-colors duration-500 max-w-xl mx-auto">
-                    <div className="mb-8 text-center">
+            <motion.div
+                className="w-full"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+                <LiquidGlassCard intensity="medium" lightMode={lightMode} className="w-full p-8 sm:p-10 transition-colors duration-500">
+                    <div className="mb-5 text-center">
                         <h1
-                            className="text-2xl font-bold transition-colors duration-500"
+                            className="text-2xl font-bold tracking-tight transition-colors duration-500"
                             style={{ color: lightMode ? '#4A4A4A' : '#f8fafc' }}
                         >
                             Buat Akun
                         </h1>
                         <p
-                            className="mt-2 text-sm transition-colors duration-500"
+                            className="mt-1.5 text-sm transition-colors duration-500"
                             style={{ color: lightMode ? '#6B7280' : '#94a3b8' }}
                         >
                             Bergabunglah dengan Kolabri untuk memulai pembelajaran kolaboratif
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label 
                                 htmlFor="name" 
@@ -101,7 +113,7 @@ export default function Register() {
                             >
                                 Saya adalah...
                             </label>
-                            <div className="mt-2 flex gap-3">
+                            <div className="mt-1.5 flex gap-2">
                                 <label className="flex flex-1 cursor-pointer items-center justify-center">
                                     <input
                                         type="radio"
@@ -112,7 +124,7 @@ export default function Register() {
                                         className="sr-only"
                                     />
                                     <span
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-center text-sm font-medium transition-all duration-300 ${
+                                        className={`w-full rounded-lg border-2 px-3 py-2 text-center text-sm font-medium transition-all duration-300 ${
                                             data.role === 'student'
                                                 ? 'border-[#88161c] bg-[rgba(136,22,28,0.05)] text-[#88161c]'
                                                 : lightMode
@@ -133,7 +145,7 @@ export default function Register() {
                                         className="sr-only"
                                     />
                                     <span
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-center text-sm font-medium transition-all duration-300 ${
+                                        className={`w-full rounded-lg border-2 px-3 py-2 text-center text-sm font-medium transition-all duration-300 ${
                                             data.role === 'lecturer'
                                                 ? 'border-[#88161c] bg-[rgba(136,22,28,0.05)] text-[#88161c]'
                                                 : lightMode
@@ -189,7 +201,7 @@ export default function Register() {
                             <InputError message={errors.password_confirmation} />
                         </div>
 
-                        <div className="pt-2">
+                        <div className="pt-1">
                             <PrimaryButton className="w-full justify-center" disabled={processing}>
                                 {processing ? (
                                     <span className="flex items-center justify-center gap-2">
@@ -207,7 +219,7 @@ export default function Register() {
                     </form>
 
                     <p
-                        className="mt-6 text-center text-sm transition-colors"
+                        className="mt-5 text-center text-sm transition-colors"
                         style={{ color: lightMode ? '#64748b' : '#94a3b8' }}
                     >
                         Sudah punya akun?{' '}
@@ -216,7 +228,7 @@ export default function Register() {
                         </Link>
                     </p>
                 </LiquidGlassCard>
-            </div>
+            </motion.div>
         </>
     );
 }
