@@ -56,12 +56,6 @@ const brandChipStyle = {
     border: '1px solid rgba(136,22,28,0.15)',
 } as const;
 
-const neutralChipStyle = {
-    background: 'rgba(74,74,74,0.08)',
-    color: 'var(--color-brand-dark)',
-    border: '1px solid rgba(74,74,74,0.12)',
-} as const;
-
 const glassPanelStyle = {
     background: 'rgba(255,255,255,0.92)',
     border: '1px solid rgba(136,22,28,0.10)',
@@ -172,9 +166,6 @@ export default function AnalyticsDetail({ course, analytics }: Props) {
                                     <div className="mt-3 flex flex-wrap items-center gap-2">
                                         <span className={badgeClass} style={brandChipStyle}>
                                             {course.code}
-                                        </span>
-                                        <span className={badgeClass} style={neutralChipStyle}>
-                                            {summary.totalGroups} kelompok • {summary.totalMessages.toLocaleString()} pesan
                                         </span>
                                     </div>
 
