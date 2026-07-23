@@ -601,14 +601,16 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     const handleSubmitRename = (chatId: string) => {
         if (titleForm.processing) return;
 
-        if (!titleForm.data.title.trim()) {
+        const nextTitle = editingTitle.trim();
+        if (!nextTitle) {
             titleForm.setError('title', 'Judul chat tidak boleh kosong.');
             return;
         }
 
         titleForm.clearErrors('title');
+        titleForm.setData('title', nextTitle);
 
-        titleForm.patch(student.aiChat.update.url({ chat: chatId }), {
+        titleForm.transform(() => ({ title: nextTitle })).patch(student.aiChat.update.url({ chat: chatId }), {
             preserveScroll: true,
             preserveState: true,
             only: ['chats', 'activeChat', 'flash', 'errors'],
@@ -619,6 +621,9 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                 if (errors?.title) {
                     titleForm.setError('title', errors.title);
                 }
+            },
+            onFinish: () => {
+                titleForm.transform((data) => data);
             },
         });
     };
@@ -1033,61 +1038,77 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                 className={`group relative rounded-2xl border p-2.5 transition-colors ${activeChat?.id === chat.id ? 'bg-white/80' : 'bg-white/45 hover:bg-white/72'}`}
                                                 style={{ borderColor: activeChat?.id === chat.id ? 'rgba(136,22,28,0.15)' : 'rgba(255,255,255,0.55)' }}
                                             >
-                                                <Link href={student.aiChat.show.url({ chat: chat.id })} className="flex items-start gap-3 pr-16" onClick={() => setSidebarOpen(false)}>
-                                                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
-                                                        <MessageSquare className="h-4 w-4" style={{ color: 'var(--color-brand-primary)' }} />
+                                                {editingChatId === chat.id ? (
+                                                    <div className="flex items-start gap-3 pr-16" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                                            <MessageSquare className="h-4 w-4" style={{ color: 'var(--color-brand-primary)' }} />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1 space-y-2">
+                                                            <input
+                                                                autoFocus
+                                                                value={editingTitle}
+                                                                onChange={(e) => {
+                                                                    setEditingTitle(e.target.value);
+                                                                    titleForm.setData('title', e.target.value);
+                                                                    if (titleForm.errors.title) {
+                                                                        titleForm.clearErrors('title');
+                                                                    }
+                                                                }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                onKeyDown={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleSubmitRename(chat.id);
+                                                                    }
+                                                                    if (e.key === 'Escape') {
+                                                                        e.preventDefault();
+                                                                        handleCancelRename();
+                                                                    }
+                                                                }}
+                                                                className="w-full rounded-xl border border-[rgba(136,22,28,0.16)] bg-white/90 px-3 py-2 text-sm font-medium text-brand-dark outline-none"
+                                                            />
+                                                            {titleForm.errors.title && (
+                                                                <p className="text-xs font-medium text-red-600">{titleForm.errors.title}</p>
+                                                            )}
+                                                            <p className="text-xs text-brand-muted-dark">{formatDate(chat.updated_at)}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        {editingChatId === chat.id ? (
-                                                            <div className="space-y-2">
-                                                                <input
-                                                                    value={editingTitle}
-                                                                    onChange={(e) => {
-                                                                        setEditingTitle(e.target.value);
-                                                                        titleForm.setData('title', e.target.value);
-                                                                        if (titleForm.errors.title) {
-                                                                            titleForm.clearErrors('title');
-                                                                        }
-                                                                    }}
-                                                                    onClick={(e) => e.preventDefault()}
-                                                                    onKeyDown={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            handleSubmitRename(chat.id);
-                                                                        }
-                                                                        if (e.key === 'Escape') {
-                                                                            e.preventDefault();
-                                                                            handleCancelRename();
-                                                                        }
-                                                                    }}
-                                                                    className="w-full rounded-xl border border-[rgba(136,22,28,0.16)] bg-white/90 px-3 py-2 text-sm font-medium text-brand-dark outline-none"
-                                                                />
-                                                                {titleForm.errors.title && (
-                                                                    <p className="text-xs font-medium text-red-600">{titleForm.errors.title}</p>
-                                                                )}
-                                                            </div>
-                                                        ) : (
+                                                ) : (
+                                                    <Link href={student.aiChat.show.url({ chat: chat.id })} className="flex items-start gap-3 pr-16" onClick={() => setSidebarOpen(false)}>
+                                                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'rgba(136,22,28,0.08)', border: '1px solid rgba(136,22,28,0.12)' }}>
+                                                            <MessageSquare className="h-4 w-4" style={{ color: 'var(--color-brand-primary)' }} />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
                                                             <p className={`truncate text-sm font-medium ${activeChat?.id === chat.id ? 'text-brand-primary' : 'text-brand-dark'}`}>
                                                                 {chat.title || 'Chat Baru'}
                                                             </p>
-                                                        )}
-                                                        <p className="mt-1 text-xs text-brand-muted-dark">{formatDate(chat.updated_at)}</p>
-                                                    </div>
-                                                </Link>
+                                                            <p className="mt-1 text-xs text-brand-muted-dark">{formatDate(chat.updated_at)}</p>
+                                                        </div>
+                                                    </Link>
+                                                )}
                                                 <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100">
                                                     {editingChatId === chat.id ? (
                                                         <>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleSubmitRename(chat.id)}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleSubmitRename(chat.id);
+                                                                }}
                                                                 className="rounded-lg p-1 text-emerald-600 transition-colors hover:bg-white/80"
                                                             >
                                                                 <Check className="h-4 w-4" />
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={handleCancelRename}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleCancelRename();
+                                                                }}
                                                                 className="rounded-lg p-1 text-brand-muted-dark transition-colors hover:bg-white/80 hover:text-brand-primary"
                                                             >
                                                                 <X className="h-4 w-4" />
@@ -1097,13 +1118,22 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                         <>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => handleStartRename(chat)}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleStartRename(chat);
+                                                                }}
                                                                 className="rounded-lg p-1 text-brand-muted-dark transition-colors hover:bg-white/80 hover:text-brand-primary"
                                                             >
                                                                 <Pencil className="h-4 w-4" />
                                                             </button>
                                                             <button
-                                                                onClick={() => setShowDeleteModal(chat.id)}
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    setShowDeleteModal(chat.id);
+                                                                }}
                                                                 className="rounded-lg p-1 text-brand-muted-dark transition-colors hover:bg-white/80 hover:text-brand-primary"
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
