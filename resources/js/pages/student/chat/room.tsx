@@ -1529,27 +1529,54 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
                     participantCount: new Set(messages.map((m) => m.sender_id)).size,
                 };
 
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                };
+                if (jwtToken) {
+                    headers.Authorization = `Bearer ${jwtToken}`;
+                }
+
                 fetch('/api/discussion-direction/summary', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
+                    credentials: 'include',
+                    headers,
                     body: JSON.stringify({
                         messages: summaryMessages,
                         goal: goal.content,
                         stats,
                     }),
                 })
-                    .then((res) => res.json())
+                    .then(async (res) => {
+                        if (!res.ok) {
+                            const errBody = await res.json().catch(() => null);
+                            throw new Error(errBody?.message || `HTTP ${res.status}`);
+                        }
+                        return res.json();
+                    })
                     .then((data) => {
                         if (data?.data) {
                             setAiSummary(data.data);
+                        } else {
+                            setAiSummary({
+                                goalAchieved: false,
+                                topics: [],
+                                contributions: {},
+                                assessment:
+                                    'Penilaian tujuan tidak tersedia. Coba tutup ulang sesi atau hubungi dosen jika masalah berlanjut.',
+                            });
                         }
                     })
                     .catch((err) => {
                         console.error('Failed to generate AI summary', err);
-                        toast.error('Gagal membuat ringkasan AI');
+                        setAiSummary({
+                            goalAchieved: false,
+                            topics: [],
+                            contributions: {},
+                            assessment:
+                                'Penilaian tujuan gagal dimuat (autentikasi/layanan AI). Ringkasan diskusi di atas tetap tersedia.',
+                        });
+                        toast.error('Gagal membuat penilaian tujuan AI');
                     })
                     .finally(() => {
                         setAiSummaryLoading(false);
@@ -3135,6 +3162,7 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
                     assessment={aiSummary?.assessment ?? ''}
                     isLoading={aiSummaryLoading}
                     onClose={() => setShowAiSummaryModal(false)}
+                    goal={goal?.content ?? null}
                 />
             )}
 
