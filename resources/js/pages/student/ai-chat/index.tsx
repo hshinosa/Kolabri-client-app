@@ -610,7 +610,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
         titleForm.clearErrors('title');
         titleForm.setData('title', nextTitle);
 
-        titleForm.transform(() => ({ title: nextTitle })).patch(student.aiChat.update.url({ chat: chatId }), {
+        titleForm.patch(student.aiChat.update.url({ chat: chatId }), {
             preserveScroll: true,
             preserveState: true,
             only: ['chats', 'activeChat', 'flash', 'errors'],
@@ -621,9 +621,6 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                 if (errors?.title) {
                     titleForm.setError('title', errors.title);
                 }
-            },
-            onFinish: () => {
-                titleForm.transform((data) => data);
             },
         });
     };
