@@ -116,36 +116,29 @@ class StudentSessionMaterialsController extends Controller
 
     public function stream(Request $request, string $course, string $materialId): StreamedResponse|JsonResponse
     {
-        $sessionDiscussionId = $request->query('sessionDiscussion');
-        if (! is_string($sessionDiscussionId) || $sessionDiscussionId === '') {
-            return response()->json(['message' => 'Parameter sessionDiscussion wajib.'], 422);
-        }
-
-        $chat = $this->fetchSessionDiscussion($sessionDiscussionId);
-        if (! $chat) {
-            return response()->json(['message' => 'Sesi diskusi tidak ditemukan'], 404);
-        }
-
-        $weekId = $chat['weekId'] ?? null;
-        if (! $weekId) {
-            return response()->json(['message' => 'Sesi tanpa minggu — akses materi ditolak.'], 403);
-        }
-
-        $maxIndex = $this->access->maxWeekIndex($course, $weekId);
-        if ($maxIndex === null) {
-            return response()->json(['message' => 'Minggu sesi tidak valid.'], 403);
-        }
-
-        if (! $this->access->isMaterialAllowedForSession($course, $materialId, $maxIndex)) {
-            return response()->json(['message' => 'Materi di luar cap minggu sesi.'], 403);
-        }
-
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         // Check 'private' disk first (new uploads), then fall back to 'public' (legacy files)
         $disk = Storage::disk('private')->exists($material->file_path) ? 'private' : 'public';
         if (! Storage::disk($disk)->exists($material->file_path)) {
             return response()->json(['message' => 'File tidak ditemukan.'], 404);
+        }
+
+        // When sessionDiscussion is provided, enforce week-cap access control.
+        $sessionDiscussionId = $request->query('sessionDiscussion');
+        if (is_string($sessionDiscussionId) && $sessionDiscussionId !== '') {
+            $chat = $this->fetchSessionDiscussion($sessionDiscussionId);
+            if (! $chat) {
+                return response()->json(['message' => 'Sesi diskusi tidak ditemukan'], 404);
+            }
+
+            $weekId = $chat['weekId'] ?? null;
+            if ($weekId) {
+                $maxIndex = $this->access->maxWeekIndex($course, $weekId);
+                if ($maxIndex !== null && ! $this->access->isMaterialAllowedForSession($course, $materialId, $maxIndex)) {
+                    return response()->json(['message' => 'Materi di luar cap minggu sesi.'], 403);
+                }
+            }
         }
 
         return Storage::disk($disk)->response(
