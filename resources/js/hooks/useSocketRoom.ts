@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { refreshAuthToken } from '@/lib/getAuthToken';
+import { resolveSocketUrl } from '@/lib/socket-url';
 import type {
     ChatDisplayMessage as DisplayMessage,
     ChatSocketMessage as SocketChatMessage,
@@ -121,7 +122,7 @@ export function useSocketRoom({
             return;
         }
 
-        const apiUrl = socketUrl || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || window.location.origin;
+        const apiUrl = resolveSocketUrl(socketUrl);
 
         socketRef.current = io(apiUrl, {
             auth: { token: jwtToken },

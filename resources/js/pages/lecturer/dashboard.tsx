@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Activity, BookOpen, Plus, Users, AlertTriangle, BarChart3 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { resolveSocketUrl } from '@/lib/socket-url';
 
 import Breadcrumbs from '@/components/dashboard/Breadcrumbs';
 import { EnhancedStatCard } from '@/components/dashboard/EnhancedStatCard';
@@ -83,10 +84,12 @@ export default function LecturerDashboard({ stats, recentActivity, chartData }: 
     useEffect(() => {
         if (!jwtToken) return;
 
-        const apiUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || window.location.origin;
+        const apiUrl = resolveSocketUrl();
         const socket: Socket = io(apiUrl, {
             auth: { token: jwtToken },
-            transports: ['websocket', 'polling'],
+            // Nginx/proxy on VPS mishandles socket.io websocket upgrades ("Invalid frame header").
+            transports: ['polling'],
+            upgrade: false,
         });
 
         socket.on('connect', () => setIsConnected(true));

@@ -1,4 +1,5 @@
 import { getAuthToken } from '@/lib/getAuthToken';
+import { resolveSocketUrl } from '@/lib/socket-url';
 
 export type AdminWebSocketEvent<T = unknown> = {
     event: string;
@@ -6,11 +7,10 @@ export type AdminWebSocketEvent<T = unknown> = {
 };
 
 function resolveWebSocketUrl() {
-    const baseUrl =
-        import.meta.env.VITE_WS_URL ||
-        import.meta.env.VITE_SOCKET_URL ||
-        import.meta.env.VITE_API_BASE_URL ||
-        window.location.origin;
+    const baseUrl = resolveSocketUrl(
+        (import.meta.env.VITE_WS_URL as string | undefined) ||
+            (import.meta.env.VITE_API_BASE_URL as string | undefined),
+    );
 
     const normalizedUrl = baseUrl.startsWith('http')
         ? new URL(baseUrl)

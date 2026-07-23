@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
 use App\Models\Course;
+use App\Models\CourseWeek;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,8 +113,22 @@ class LecturerAttendanceController extends Controller
             }
         }
 
+        $weekLabels = [];
+        if (!empty($byWeek)) {
+            $weeks = CourseWeek::where('course_id', $course)
+                ->whereIn('id', array_keys($byWeek))
+                ->get(['id', 'week_index', 'title']);
+
+            foreach ($weeks as $week) {
+                $indexLabel = $week->week_index ? "Minggu {$week->week_index}" : 'Minggu';
+                $title = trim((string) ($week->title ?? ''));
+                $weekLabels[$week->id] = $title !== '' ? "{$indexLabel}: {$title}" : $indexLabel;
+            }
+        }
+
         return response()->json([
             'byWeek' => $byWeek,
+            'weekLabels' => $weekLabels,
             'other' => $other,
             'running' => $running,
             'groupMembers' => $groupMembers,

@@ -13,6 +13,7 @@ import {
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 
 import { io, Socket } from 'socket.io-client';
+import { resolveSocketUrl } from '@/lib/socket-url';
 
 import { LiquidGlassCard, OrganicBlob } from '@/components/Welcome/utils/helpers';
 import { BaseModal } from '@/components/ui/BaseModal';
@@ -326,10 +327,11 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
     useEffect(() => {
         if (!jwtToken) return;
 
-        const apiUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || window.location.origin;
+        const apiUrl = resolveSocketUrl();
         const socket: Socket = io(apiUrl, {
             auth: { token: jwtToken },
-            transports: ['websocket', 'polling'],
+            transports: ['polling'],
+            upgrade: false,
         });
 
         socket.on('quality_update', (data) => {

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { resolveSocketUrl } from '@/lib/socket-url';
 
 import { DateRangePicker, ExportMenu, TrendChart, type TrendDataPoint } from '@/components/analytics';
 import { LiquidGlassCard, OrganicBlob, SecondaryButton } from '@/components/Welcome/utils/helpers';
@@ -228,11 +229,12 @@ export default function CourseAnalytics({ course, analytics, filters }: Props) {
     useEffect(() => {
         if (!jwtToken) return;
 
-        const apiUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || window.location.origin;
+        const apiUrl = resolveSocketUrl();
 
         const socket: Socket = io(apiUrl, {
             auth: { token: jwtToken },
-            transports: ['websocket', 'polling'],
+            transports: ['polling'],
+            upgrade: false,
         });
 
         socket.on('connect', () => {

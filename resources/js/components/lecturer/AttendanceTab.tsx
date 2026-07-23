@@ -30,6 +30,7 @@ interface AttendanceTabProps {
 
 interface GroupedSessions {
     byWeek: Record<string, AttendanceSession[]>;
+    weekLabels?: Record<string, string>;
     other: AttendanceSession[];
     running: Array<{
         session_discussion_id: string;
@@ -38,6 +39,10 @@ interface GroupedSessions {
         week_id: string | null;
         status: string;
     }>;
+}
+
+function formatWeekLabel(weekId: string, weekLabels?: Record<string, string>): string {
+    return weekLabels?.[weekId] || `Minggu ${weekId}`;
 }
 
 export default function AttendanceTab({ courseId }: AttendanceTabProps) {
@@ -295,7 +300,9 @@ export default function AttendanceTab({ courseId }: AttendanceTabProps) {
                             <h4 className="text-base font-semibold" style={headingStyle}>Sesi per Minggu</h4>
                             {Object.entries(groupedSessions.byWeek).map(([weekId, sessions]) => (
                                 <div key={weekId} className="space-y-2">
-                                    <h5 className="text-sm font-medium text-brand-muted-dark">Minggu {weekId}</h5>
+                                    <h5 className="text-sm font-medium text-brand-muted-dark">
+                                        {formatWeekLabel(weekId, groupedSessions.weekLabels)}
+                                    </h5>
                                     <div className="grid gap-3">
                                         {filterSessionsByGroup(sessions).map((session) => (
                                             <LiquidGlassCard key={session.id} className="p-4">
@@ -447,7 +454,9 @@ export default function AttendanceTab({ courseId }: AttendanceTabProps) {
                         <select value={summaryWeekFilter} onChange={(e) => setSummaryWeekFilter(e.target.value)} className="px-3 py-2 rounded-lg border text-sm">
                             <option value="">Semua Minggu</option>
                             {Object.keys(groupedSessions.byWeek).map((weekId) => (
-                                <option key={weekId} value={weekId}>Minggu {weekId}</option>
+                                <option key={weekId} value={weekId}>
+                                    {formatWeekLabel(weekId, groupedSessions.weekLabels)}
+                                </option>
                             ))}
                         </select>
                         <select value={summaryGroupFilter} onChange={(e) => setSummaryGroupFilter(e.target.value)} className="px-3 py-2 rounded-lg border text-sm">
