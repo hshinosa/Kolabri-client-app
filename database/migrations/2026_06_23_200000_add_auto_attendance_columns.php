@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Columns already exist when Core API (Prisma) owns attendance tables.
+        if (Schema::hasColumn('attendance_sessions', 'session_discussion_id')) {
+            return;
+        }
+
         Schema::table('attendance_sessions', function (Blueprint $table) {
             $table->uuid('session_discussion_id')->nullable()->unique()->after('course_id');
             $table->uuid('week_id')->nullable()->index()->after('session_discussion_id');
