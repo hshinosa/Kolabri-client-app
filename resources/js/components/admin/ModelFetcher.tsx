@@ -14,12 +14,9 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const supportedProviders = ['openai', 'anthropic', 'gemini'];
-    const isSupported = supportedProviders.includes(providerName.toLowerCase());
-
     const handleFetchModels = async (refresh = false) => {
-        if (!isSupported) {
-            setError('Provider not supported for model discovery');
+        if (!providerName.trim()) {
+            setError('Isi nama provider terlebih dahulu');
             return;
         }
 
@@ -27,20 +24,22 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
         setError(null);
 
         try {
-            const result = await getProviderModels(
-                providerName.toLowerCase() as 'openai' | 'anthropic' | 'gemini',
-                refresh
-            );
+            const result = await getProviderModels(providerName.trim(), refresh);
 
             if (result.success) {
                 setModels(result.models);
-                toast.success(`Fetched ${result.models.length} models${result.cached ? ' (cached)' : ''}`);
+                toast.success(`Berhasil memuat ${result.models.length} model${result.cached ? ' (cache)' : ''}`);
             } else {
-                setError(result.error || 'Failed to fetch models');
-                toast.error(result.error || 'Failed to fetch models');
+                setError(result.error || 'Gagal memuat daftar model');
+                toast.error(result.error || 'Gagal memuat daftar model');
             }
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Failed to fetch models';
+            const serverMsg =
+                err && typeof err === 'object' && 'response' in err
+                    ? ((err as { response?: { data?: { message?: string; reason?: string } } }).response?.data ??
+                      {}).reason
+                    : undefined;
+            const errorMsg = serverMsg || (err instanceof Error ? err.message : 'Gagal memuat daftar model');
             setError(errorMsg);
             toast.error(errorMsg);
         } finally {
@@ -48,7 +47,7 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
         }
     };
 
-    if (!isSupported) {
+    if (!providerName.trim()) {
         return null;
     }
 
@@ -56,7 +55,7 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-gray-700 dark:bg-gray-800">
             <div className="mb-3 flex items-center justify-between">
                 <h4 className="text-sm font-medium text-brand-dark dark:text-gray-200">
-                    Available Models
+                    Model tersedia
                 </h4>
                 <button
                     type="button"
@@ -69,7 +68,7 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
                     ) : (
                         <RefreshCw className="h-3 w-3" />
                     )}
-                    {loading ? 'Fetching...' : 'Fetch Models'}
+                    {loading ? 'Mengambil...' : 'Ambil model'}
                 </button>
             </div>
 
@@ -103,7 +102,7 @@ export function ModelFetcher({ providerName, onModelSelect }: ModelFetcherProps)
                 </div>
             ) : (
                 <p className="text-sm text-brand-muted-dark dark:text-gray-400">
-                    Click "Fetch Models" to load available models from {providerName}
+                    Klik "Ambil model" untuk memuat daftar model dari {providerName}
                 </p>
             )}
         </div>

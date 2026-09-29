@@ -12,8 +12,10 @@ import {
     RefreshCcw,
     Search,
     Trash2,
+    UserCheck,
     UserCog,
     UserPen,
+    UserX,
 } from 'lucide-react';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -26,12 +28,16 @@ import { PasswordStrengthMeter } from '@/components/ui/PasswordStrengthMeter';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { toast } from '@/components/ui/toaster';
 import { exportToCSV, parseCSV, validateCSVColumns, type CsvRecord } from '@/lib/csv-utils';
-import { connectWebSocket } from '@/lib/websocket';
+import { connectWebSocket, type AdminSocketHandle } from '@/lib/websocket';
 import Breadcrumbs from '@/components/dashboard/Breadcrumbs';
 import AppLayout from '@/layouts/app-layout';
 import { User, UserRole } from '@/types';
 
 type FilterRole = UserRole | 'all';
+
+type ManagedUser = User & {
+    isActive?: boolean;
+};
 
 interface PaginationData {
     page: number;
@@ -46,7 +52,7 @@ interface FilterData {
 }
 
 interface PageProps {
-    users: User[];
+    users: ManagedUser[];
     pagination: PaginationData;
     filters: FilterData;
 }
@@ -68,11 +74,11 @@ const USER_SAMPLE_ROWS = [
 
 const roleConfig: Record<UserRole, { label: string; className: string }> = {
     student: {
-        label: 'Student',
+        label: 'Mahasiswa',
         className: 'border border-blue-200 bg-blue-100 text-blue-700',
     },
     lecturer: {
-        label: 'Lecturer',
+        label: 'Dosen',
         className: 'border border-green-200 bg-green-100 text-green-700',
     },
     admin: {
@@ -91,7 +97,9 @@ const inputClassName =
 
 const buttonSpinner = <Loader2 className="h-4 w-4 animate-spin" />;
 
-function formatDate(date: string) {
+function formatDate(date?: string | null) {
+    if (!date) return '-';
+
     return new Date(date).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'short',
@@ -139,18 +147,21 @@ function UserCard({
     onEdit,
     onResetPassword,
     onDelete,
+    onToggleStatus,
 }: {
-    user: User;
+    user: ManagedUser;
     selected: boolean;
     onToggleSelect: (userId: string) => void;
-    onEdit: (user: User) => void;
-    onResetPassword: (user: User) => void;
-    onDelete: (user: User) => void;
+    onEdit: (user: ManagedUser) => void;
+    onResetPassword: (user: ManagedUser) => void;
+    onDelete: (user: ManagedUser) => void;
+    onToggleStatus: (user: ManagedUser) => void;
 }) {
-    const statusBadgeClassName = user.email_verified_at
+    const isUserActive = user.isActive !== false;
+    const statusBadgeClassName = isUserActive
         ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
         : 'border-amber-200 bg-amber-100 text-amber-700';
-    const statusLabel = user.email_verified_at ? 'Verified' : 'Unverified';
+    const statusLabel = isUserActive ? 'Aktif' : 'Nonaktif';
 
     return (
         <LiquidGlassCard intensity="light" className="p-4 transition-shadow duration-200" lightMode={true}>
@@ -164,7 +175,7 @@ function UserCard({
                                 onChange={() => onToggleSelect(user.id)}
                                 className="h-4 w-4 rounded border-slate-300 text-brand-primary focus-visible:ring-brand-primary/30"
                             />
-                            Select user
+                            Pilih pengguna
                         </label>
                         <p className="text-base font-semibold text-[var(--dm-text)]">{user.name}</p>
                         <p className="mt-0.5 truncate text-sm text-[var(--dm-text-secondary)]">{user.email}</p>
@@ -178,10 +189,10 @@ function UserCard({
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${roleConfig[user.role].className}`}>
                         {roleConfig[user.role].label}
                     </span>
-                    <span className="text-xs text-[var(--dm-text-muted)]">Created: {formatDate(user.created_at)}</span>
+                    <span className="text-xs text-[var(--dm-text-muted)]">Dibuat: {formatDate(user.createdAt)}</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     <button
                         type="button"
                         onClick={() => onEdit(user)}
@@ -198,10 +209,17 @@ function UserCard({
                     </button>
                     <button
                         type="button"
+                        onClick={() => onToggleStatus(user)}
+                        className="inline-flex h-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 transition hover:border-brand-primary/35"
+                    >
+                        {isUserActive ? 'Nonaktifkan' : 'Aktifkan'}
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => onDelete(user)}
                         className="inline-flex h-11 touch-manipulation items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-2 text-xs text-rose-600 transition hover:bg-rose-100"
                     >
-                        Delete
+                        Hapus
                     </button>
                 </div>
             </div>
@@ -210,7 +228,7 @@ function UserCard({
 }
 
 export default function AdminUserManagementPage({ users, pagination, filters }: PageProps) {
-    const [userList, setUserList] = useState<User[]>(users);
+    const [userList, setUserList] = useState<ManagedUser[]>(users);
     const [paginationState, setPaginationState] = useState<PaginationData>(pagination);
     const [searchInput, setSearchInput] = useState(filters.search ?? '');
     const [roleFilter, setRoleFilter] = useState<FilterRole>(filters.role ?? 'all');
@@ -224,7 +242,7 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
     const [bulkRole, setBulkRole] = useState<UserRole>('student');
     const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -281,7 +299,7 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
         try {
             const response = await axios.get<{
                 data: {
-                    users: User[];
+                    users: ManagedUser[];
                     pagination: PaginationData;
                     filters: FilterData;
                 };
@@ -300,12 +318,12 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
             setUserList(response.data.data.users ?? []);
             setPaginationState((currentPagination) => response.data.data.pagination ?? currentPagination);
         } catch {
-            toast.error('Failed to refresh user list.');
+            toast.error('Gagal memuat ulang daftar pengguna.');
         }
     }, [limit, paginationState.page, roleFilter, searchInput]);
 
     useEffect(() => {
-        let socket: WebSocket | null = null;
+        let socket: AdminSocketHandle | null = null;
 
         void connectWebSocket({
             onMessage: (message) => {
@@ -313,7 +331,7 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
                     const actorName = (message.data as { actor?: { name?: string } })?.actor?.name;
 
                     if (message.event === 'users:created' && actorName) {
-                        toast.success(`New user added by ${actorName}`);
+                        toast.success(`Pengguna baru ditambahkan oleh ${actorName}`);
                     }
 
                     void fetchUsersJson();
@@ -499,6 +517,18 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
         setSelectedUserIds(new Set());
     };
 
+    const handleToggleStatus = async (user: ManagedUser) => {
+        try {
+            const response = await axios.post<{ data: ManagedUser }>(`/admin/users/${user.id}/toggle-status`);
+            const nextActive = response.data?.data?.isActive ?? !(user.isActive !== false);
+
+            toast.success(nextActive ? `Status ${user.name} diaktifkan.` : `Status ${user.name} dinonaktifkan.`);
+            void fetchUsersJson();
+        } catch (error) {
+            toast.error(extractAxiosErrorMessage(error, 'Gagal mengubah status user.'));
+        }
+    };
+
     const handleCreateUser = (event: FormEvent) => {
         event.preventDefault();
 
@@ -649,7 +679,7 @@ export default function AdminUserManagementPage({ users, pagination, filters }: 
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                created_at: user.created_at,
+                created_at: user.createdAt,
             }));
 
             exportToCSV(exportRows, 'users-export.csv');
@@ -883,17 +913,18 @@ background: 'var(--dm-accent-bg)',
                                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Email</th>
                                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Peran</th>
                                             <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Dibuat</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Status</th>
                                             <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/70">
                                         {showSkeleton ? (
                                             Array.from({ length: 5 }).map((_, i) => (
-                                                <TableRowSkeleton key={i} columns={6} />
+                                                <TableRowSkeleton key={i} columns={7} />
                                             ))
                                         ) : userList.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-4 py-8">
+                                                <td colSpan={7} className="px-4 py-8">
                                                     <EmptyState
                                                         icon={Search}
                                                         title="Tidak ada data ditemukan"
@@ -920,7 +951,18 @@ background: 'var(--dm-accent-bg)',
                                                             {roleConfig[user.role].label}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(user.created_at)}</td>
+                                                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(user.createdAt)}</td>
+                                                    <td className="px-4 py-3">
+                                                        <span
+                                                            className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                                                user.isActive !== false
+                                                                    ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
+                                                                    : 'border-amber-200 bg-amber-100 text-amber-700'
+                                                            }`}
+                                                        >
+                                                            {user.isActive !== false ? 'Aktif' : 'Nonaktif'}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-4 py-3 text-right">
                                                         <div className="relative inline-block text-left">
                                                             <button
@@ -953,7 +995,18 @@ background: 'var(--dm-accent-bg)',
                                                                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                                                                     >
                                                                         <RefreshCcw className="h-4 w-4" />
-                                                                        Reset Password
+                                                                        Atur Ulang Password
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setOpenActionsFor(null);
+                                                                            void handleToggleStatus(user);
+                                                                        }}
+                                                                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                                                    >
+                                                                        {user.isActive !== false ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                                                                        {user.isActive !== false ? 'Nonaktifkan' : 'Aktifkan'}
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -964,7 +1017,7 @@ background: 'var(--dm-accent-bg)',
                                                                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50"
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
-                                                                        Delete
+                                                                        Hapus
                                                                     </button>
                                                                 </div>
                                                             )}
@@ -996,6 +1049,7 @@ background: 'var(--dm-accent-bg)',
                                             onEdit={openEdit}
                                             onResetPassword={openResetPassword}
                                             onDelete={openDelete}
+                                            onToggleStatus={handleToggleStatus}
                                         />
                                     ))
                                 )}
@@ -1017,14 +1071,14 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showImportModal}
-                title="Import Users from CSV"
-                description="Upload file CSV untuk membuat banyak user sekaligus. Pastikan kolom name, email, dan role tersedia."
+                title="Impor Pengguna dari CSV"
+                description="Unggah file CSV untuk membuat banyak user sekaligus. Pastikan kolom name, email, dan role tersedia."
                 onClose={closeImportModal}
             >
                 <div className="space-y-5">
                     <div>
                         <label className="block text-sm font-medium text-brand-dark">
-                            CSV File <span className="text-brand-primary">*</span>
+                            File CSV <span className="text-brand-primary">*</span>
                         </label>
                         <input
                             type="file"
@@ -1036,12 +1090,12 @@ background: 'var(--dm-accent-bg)',
 
                     <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
                         <div>
-                            <p className="font-medium text-brand-dark">Sample template</p>
+                            <p className="font-medium text-brand-dark">Template contoh</p>
                             <p className="mt-1">Gunakan template CSV agar format kolom sesuai.</p>
                         </div>
                         <SecondaryButton onClick={handleDownloadUserTemplate} className="px-4 py-2 text-sm">
                             <FileSpreadsheet className="h-4 w-4" />
-                            Download Template
+                            Unduh Template
                         </SecondaryButton>
                     </div>
 
@@ -1054,7 +1108,7 @@ background: 'var(--dm-accent-bg)',
                     {importPreview.length > 0 && (
                         <div className="space-y-3">
                             <div>
-                                <h4 className="text-sm font-semibold text-brand-dark">Preview (first 5 rows)</h4>
+                                <h4 className="text-sm font-semibold text-brand-dark">Pratinjau (5 baris pertama)</h4>
                                 <p className="mt-1 text-xs text-slate-500">Data di bawah ini di-parse langsung dari file yang dipilih.</p>
                             </div>
 
@@ -1088,16 +1142,16 @@ background: 'var(--dm-accent-bg)',
                         style={{ borderTop: '1px solid var(--dm-border)' }}
                     >
                         <SecondaryButton onClick={closeImportModal} className="flex-1">
-                            Cancel
+                            Batal
                         </SecondaryButton>
                         <PrimaryButton className="flex-1" onClick={() => void handleImportUsers()} disabled={!importFile || !!importValidationError || importProcessing}>
                             {importProcessing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
-                                    Importing...
+                                    Mengimpor...
                                 </span>
                             ) : (
-                                'Import Users'
+                                'Impor Pengguna'
                             )}
                         </PrimaryButton>
                     </div>
@@ -1106,21 +1160,21 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showCreateModal}
-                title="Create User"
+                title="Tambah Pengguna"
                 description="Tambahkan user baru ke dalam platform."
                 onClose={closeCreateModal}
             >
                 <form onSubmit={handleCreateUser} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-brand-dark">
-                            Name <span className="text-brand-primary">*</span>
+                            Nama <span className="text-brand-primary">*</span>
                         </label>
                         <input
                             type="text"
                             value={createForm.data.name}
                             onChange={(event) => createForm.setData('name', event.target.value)}
                             className={inputClassName}
-                            placeholder="Full name"
+                            placeholder="Nama lengkap"
                         />
                         <InputError message={createForm.errors.name} />
                     </div>
@@ -1148,21 +1202,21 @@ background: 'var(--dm-accent-bg)',
                             value={createForm.data.password}
                             onChange={(event) => createForm.setData('password', event.target.value)}
                             className={inputClassName}
-                            placeholder="Minimum 8 characters"
+                            placeholder="Minimal 8 karakter"
                         />
                         <PasswordStrengthMeter password={createForm.data.password} />
                         <InputError message={createForm.errors.password} />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-brand-dark">Role</label>
+                        <label className="block text-sm font-medium text-brand-dark">Peran</label>
                         <select
                             value={createForm.data.role}
                             onChange={(event) => createForm.setData('role', event.target.value as UserRole)}
                             className={inputClassName}
                         >
-                            <option value="student">Student</option>
-                            <option value="lecturer">Lecturer</option>
+                            <option value="student">Mahasiswa</option>
+                            <option value="lecturer">Dosen</option>
                             <option value="admin">Admin</option>
                         </select>
                         <InputError message={createForm.errors.role} />
@@ -1173,16 +1227,16 @@ background: 'var(--dm-accent-bg)',
                         style={{ borderTop: '1px solid var(--dm-border)' }}
                     >
                         <SecondaryButton onClick={closeCreateModal} className="flex-1">
-                            Cancel
+                            Batal
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={createForm.processing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={createForm.processing}>
                             {createForm.processing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
-                                    Creating...
+                                    Menambahkan...
                                 </span>
                             ) : (
-                                'Create User'
+                                'Tambah Pengguna'
                             )}
                         </PrimaryButton>
                     </div>
@@ -1191,14 +1245,14 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showEditModal}
-                title="Edit User"
+                title="Edit Pengguna"
                 description="Perbarui data user terpilih."
                 onClose={closeEditModal}
             >
                 <form onSubmit={handleEditUser} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-brand-dark">
-                            Name <span className="text-brand-primary">*</span>
+                            Nama <span className="text-brand-primary">*</span>
                         </label>
                         <input
                             type="text"
@@ -1223,14 +1277,14 @@ background: 'var(--dm-accent-bg)',
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-brand-dark">Role</label>
+                        <label className="block text-sm font-medium text-brand-dark">Peran</label>
                         <select
                             value={editForm.data.role}
                             onChange={(event) => editForm.setData('role', event.target.value as UserRole)}
                             className={inputClassName}
                         >
-                            <option value="student">Student</option>
-                            <option value="lecturer">Lecturer</option>
+                            <option value="student">Mahasiswa</option>
+                            <option value="lecturer">Dosen</option>
                             <option value="admin">Admin</option>
                         </select>
                         <InputError message={editForm.errors.role} />
@@ -1241,16 +1295,16 @@ background: 'var(--dm-accent-bg)',
                         style={{ borderTop: '1px solid var(--dm-border)' }}
                     >
                         <SecondaryButton onClick={closeEditModal} className="flex-1">
-                            Cancel
+                            Batal
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={editForm.processing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={editForm.processing}>
                             {editForm.processing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
-                                    Saving...
+                                    Menyimpan...
                                 </span>
                             ) : (
-                                'Save Changes'
+                                'Simpan Perubahan'
                             )}
                         </PrimaryButton>
                     </div>
@@ -1259,7 +1313,7 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showDeleteModal}
-                title="Delete User"
+                title="Hapus Pengguna"
                 description="Aksi ini tidak bisa dibatalkan. Pastikan Anda yakin sebelum melanjutkan."
                 onClose={closeDeleteModal}
             >
@@ -1273,10 +1327,10 @@ background: 'var(--dm-accent-bg)',
                         style={{ borderTop: '1px solid var(--dm-border)' }}
                     >
                         <SecondaryButton onClick={closeDeleteModal} className="flex-1">
-                            Cancel
+                            Batal
                         </SecondaryButton>
                         <PrimaryButton onClick={handleDeleteUser} className="flex-1" disabled={isFetching}>
-                            Delete User
+                            Hapus Pengguna
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1284,21 +1338,21 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showResetPasswordModal}
-                title="Reset Password"
+                title="Atur Ulang Password"
                 description="Masukkan password baru untuk user terpilih."
                 onClose={closeResetPasswordModal}
             >
                 <form onSubmit={handleResetPassword} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-brand-dark">
-                            New Password <span className="text-brand-primary">*</span>
+                            Password Baru <span className="text-brand-primary">*</span>
                         </label>
                         <input
                             type="password"
                             value={resetPasswordForm.data.password}
                             onChange={(event) => resetPasswordForm.setData('password', event.target.value)}
                             className={inputClassName}
-                            placeholder="Minimum 8 characters"
+                            placeholder="Minimal 8 karakter"
                         />
                         <InputError message={resetPasswordForm.errors.password} />
                     </div>
@@ -1308,16 +1362,16 @@ background: 'var(--dm-accent-bg)',
                         style={{ borderTop: '1px solid var(--dm-border)' }}
                     >
                         <SecondaryButton onClick={closeResetPasswordModal} className="flex-1">
-                            Cancel
+                            Batal
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={resetPasswordForm.processing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={resetPasswordForm.processing}>
                             {resetPasswordForm.processing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
-                                    Resetting...
+                                    Mengatur ulang...
                                 </span>
                             ) : (
-                                'Reset Password'
+                                'Atur Ulang Password'
                             )}
                         </PrimaryButton>
                     </div>

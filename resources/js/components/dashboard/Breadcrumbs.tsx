@@ -8,34 +8,33 @@ export interface BreadcrumbItem {
 
 interface BreadcrumbsProps {
     items: BreadcrumbItem[];
-    lightMode?: boolean;
 }
 
-export default function Breadcrumbs({ items, lightMode = true }: BreadcrumbsProps) {
+/**
+ * Colors use `brand-muted` / `brand-dark`, whose CSS variables are overridden
+ * under `.dark`, so the breadcrumb adapts to the active theme automatically.
+ */
+export default function Breadcrumbs({ items }: BreadcrumbsProps) {
     return (
         <nav className="mb-4 flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
             <Link
                 href="/dashboard"
-                className="flex items-center gap-1 transition-colors hover:opacity-80"
-                style={{ color: lightMode ? '#6B7280' : '#9ca3af' }}
+                className="flex items-center gap-1 text-brand-muted transition-colors hover:opacity-80"
             >
                 <Home className="h-3.5 w-3.5" />
             </Link>
             {items.map((item, index) => (
                 <span key={index} className="flex items-center gap-1.5">
-                    <ChevronRight className="h-3.5 w-3.5" style={{ color: lightMode ? '#9ca3af' : '#4b5563' }} />
+                    <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
                     {item.href ? (
                         <Link
                             href={item.href}
-                            className="transition-colors hover:opacity-80"
-                            style={{ color: lightMode ? '#6B7280' : '#9ca3af' }}
+                            className="text-brand-muted transition-colors hover:opacity-80"
                         >
                             {item.label}
                         </Link>
                     ) : (
-                        <span style={{ color: lightMode ? '#4A4A4A' : '#e5e7eb', fontWeight: 500 }}>
-                            {item.label}
-                        </span>
+                        <span className="font-medium text-brand-dark">{item.label}</span>
                     )}
                 </span>
             ))}

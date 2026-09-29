@@ -109,7 +109,13 @@ class UserManagementController extends Controller
     public function resetPassword(Request $request, $id)
     {
         try {
-            $response = $this->apiRequest()->post($this->apiUrl() . "/api/admin/users/{$id}/reset-password", $request->all());
+            // Core API expects `newPassword`; UI form submits `password`.
+            $payload = $request->all();
+            if (!isset($payload['newPassword']) && isset($payload['password'])) {
+                $payload['newPassword'] = $payload['password'];
+                unset($payload['password']);
+            }
+            $response = $this->apiRequest()->post($this->apiUrl() . "/api/admin/users/{$id}/reset-password", $payload);
 
             return response()->json($response->json(), $response->status());
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
@@ -118,6 +124,58 @@ class UserManagementController extends Controller
         } catch (\Throwable $e) {
             Log::error('UserManagementController: failed to reset password', ['id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to reset password', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        try {
+            $response = $this->apiRequest()->post($this->apiUrl() . '/api/admin/users/bulk-delete', $request->all());
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('UserManagementController: connection failed bulk deleting users', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('UserManagementController: failed to bulk delete users', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to bulk delete users', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
+    public function bulkRoleChange(Request $request)
+    {
+        try {
+            $response = $this->apiRequest()->post($this->apiUrl() . '/api/admin/users/bulk-role-change', $request->all());
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('UserManagementController: connection failed bulk changing roles', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('UserManagementController: failed to bulk change roles', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to bulk change roles', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
+    public function bulkImport(Request $request)
+    {
+        try {
+            $request->validate(['file' => 'required|file|mimes:csv,txt,xlsx']);
+            $response = $this->apiRequest(60, 30)->attach(
+                'file',
+                file_get_contents($request->file('file')->getRealPath()),
+                $request->file('file')->getClientOriginalName()
+            )->post($this->apiUrl() . '/api/admin/users/bulk-import');
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('UserManagementController: connection failed bulk importing users', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('UserManagementController: failed to bulk import users', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to bulk import users', 'code' => 'SERVER_ERROR'], 500);
         }
     }
 
@@ -139,6 +197,8 @@ class UserManagementController extends Controller
     public function exportData(\Illuminate\Http\Request $request)
     {
         $params = $request->only(['limit', 'sortBy', 'sortOrder']);
+        // Core list validation caps limit at 100.
+        $params['limit'] = min(100, (int) ($params['limit'] ?? 100));
         $response = $this->apiRequest(30, 10)->get($this->apiUrl() . '/api/admin/users', $params);
         return $this->proxyResponse($response);
     }

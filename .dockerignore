@@ -4,5 +4,8 @@ storage
 bootstrap/cache
 public/build
 .env
+.env.*
 .git
 .gitignore
+htmlcov
+.pytest_cache

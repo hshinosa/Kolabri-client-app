@@ -81,6 +81,48 @@ function stringifyChanges(value: unknown) {
     return JSON.stringify(value ?? {}, null, 2);
 }
 
+/** Human-readable labels for `metadata.source` values emitted by core-api audit logs. */
+const AUDIT_SOURCE_LABELS: Record<string, string | undefined> = {
+    'admin.user.create': 'Menambahkan pengguna',
+    'admin.user.update': 'Memperbarui pengguna',
+    'admin.user.delete': 'Menghapus pengguna',
+    'admin.user.reset-password': 'Mereset kata sandi pengguna',
+    'admin.user.bulk-delete': 'Menghapus pengguna secara massal',
+    'admin.user.bulk-role-change': 'Mengubah peran pengguna secara massal',
+    'admin.user.bulk-import': 'Mengimpor pengguna',
+    'admin.course': 'Menambahkan kelas',
+    'admin.course.update': 'Memperbarui kelas',
+    'admin.course.delete': 'Menghapus kelas',
+    'admin.course.clone': 'Mengkloning kelas',
+    'admin.course.archive': 'Mengarsipkan kelas',
+    'admin.course.restore': 'Memulihkan kelas',
+    'admin.course.permanent-delete': 'Menghapus kelas secara permanen',
+    'admin.course.bulk-active-state': 'Mengubah status kelas secara massal',
+    'admin.ai-provider.create': 'Menambahkan provider AI',
+    'admin.ai-provider.update': 'Memperbarui provider AI',
+    'admin.ai-provider.delete': 'Menghapus provider AI',
+    'admin.ai-provider.activate': 'Mengaktifkan provider AI',
+    'middleware-fallback': 'Pencatatan otomatis (middleware)',
+    seed: 'Data contoh (seed)',
+};
+
+function describeDetails(metadata: AuditLogItem['metadata']) {
+    if (!metadata || Object.keys(metadata).length === 0) {
+        return '-';
+    }
+
+    const { source, ...rest } = metadata;
+
+    if (typeof source !== 'string') {
+        return JSON.stringify(metadata);
+    }
+
+    // Unknown source → fall back to the raw value instead of hiding it.
+    const label = AUDIT_SOURCE_LABELS[source] ?? source;
+
+    return Object.keys(rest).length > 0 ? `${label} · ${JSON.stringify(rest)}` : label;
+}
+
 function ChangesModal({
     log,
     onClose,
@@ -93,11 +135,11 @@ function ChangesModal({
     }
 
     return (
-        <BaseModal open={Boolean(log)} title="Audit Changes" onClose={onClose} size="xl" className="max-h-[90vh] overflow-y-auto rounded-3xl border border-white/70 bg-white/95 p-6 shadow-2xl">
+        <BaseModal open={Boolean(log)} title="Perubahan Audit" onClose={onClose} size="xl" className="max-h-[90vh] overflow-y-auto rounded-3xl border border-white/70 bg-white/95 p-6 shadow-2xl">
             <div>
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="text-lg font-semibold text-brand-dark">Audit Changes</h3>
+                        <h3 className="text-lg font-semibold text-brand-dark">Perubahan Audit</h3>
                         <p className="mt-1 text-sm text-slate-500">
                             {log.action} · {log.entityType} · {log.entityId}
                         </p>
@@ -109,13 +151,13 @@ function ChangesModal({
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
                     <div>
-                        <p className="text-sm font-semibold text-brand-dark">Before</p>
+                        <p className="text-sm font-semibold text-brand-dark">Sebelum</p>
                         <pre className="mt-2 max-h-[420px] overflow-auto rounded-2xl border border-slate-200 bg-slate-950/95 p-4 text-xs text-slate-100">
                             {stringifyChanges(log.changes?.before)}
                         </pre>
                     </div>
                     <div>
-                        <p className="text-sm font-semibold text-brand-dark">After</p>
+                        <p className="text-sm font-semibold text-brand-dark">Sesudah</p>
                         <pre className="mt-2 max-h-[420px] overflow-auto rounded-2xl border border-slate-200 bg-slate-950/95 p-4 text-xs text-slate-100">
                             {stringifyChanges(log.changes?.after)}
                         </pre>
@@ -171,7 +213,7 @@ export default function AdminAuditLogPage({ logs, meta, filters }: PageProps) {
             setAuditLogs(response.data.data ?? []);
             setAuditMeta(response.data.meta ?? auditMeta);
         } catch {
-            toast.error('Failed to load audit logs.');
+            toast.error('Gagal memuat log audit.');
         } finally {
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, 300 - elapsed);
@@ -222,7 +264,7 @@ export default function AdminAuditLogPage({ logs, meta, filters }: PageProps) {
         }));
 
         exportToCSV(rows, 'audit-log-export.csv');
-        toast.success('Audit log CSV exported.');
+        toast.success('CSV log audit berhasil diekspor.');
     };
 
     const currentPage = Math.floor(auditMeta.offset / auditMeta.limit) + 1;
@@ -241,11 +283,11 @@ export default function AdminAuditLogPage({ logs, meta, filters }: PageProps) {
     };
 
     return (
-        <AppLayout title="Audit Log">
-            <Head title="Admin - Audit Log" />
+        <AppLayout title="Log Audit">
+            <Head title="Admin - Log Audit" />
 
             <div className="space-y-6">
-                <Breadcrumbs items={[{ label: 'Admin', href: '/admin/dashboard' }, { label: 'Audit Log' }]} />
+                <Breadcrumbs items={[{ label: 'Admin', href: '/admin/dashboard' }, { label: 'Log Audit' }]} />
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                     <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
                         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -261,17 +303,17 @@ background: 'var(--dm-accent-bg)',
                                 </div>
                                 <div>
                                     <h1 className="text-2xl font-bold" style={headingStyle}>
-                                        Audit Log
+                                        Log Audit
                                     </h1>
                                     <p className="mt-2 text-brand-muted-dark">
-                                        Review every admin action across users, courses, and AI settings with timestamps and change snapshots.
+                                        Telusuri setiap aksi admin pada pengguna, kelas, dan pengaturan AI beserta waktu dan riwayat perubahan.
                                     </p>
                                 </div>
                             </div>
 
                             <SecondaryButton onClick={handleExportCsv} className="px-4 py-2 text-sm">
                                 <Download className="h-4 w-4" />
-                                Export CSV
+                                Ekspor CSV
                             </SecondaryButton>
                         </div>
                     </LiquidGlassCard>
@@ -281,48 +323,48 @@ background: 'var(--dm-accent-bg)',
                     <LiquidGlassCard intensity="light" className="space-y-5 p-5 sm:p-6" lightMode={true}>
                         <div className="grid gap-3 lg:grid-cols-4">
                             <div>
-                                <label className="text-sm font-medium text-brand-dark">Action</label>
+                                <label className="text-sm font-medium text-brand-dark">Aksi</label>
                                 <select
                                     value={filterState.action}
                                     onChange={(event) => setFilterState((prev) => ({ ...prev, action: event.target.value }))}
                                     className={inputClassName}
                                 >
-                                    <option value="">All actions</option>
-                                    <option value="CREATE">Create</option>
-                                    <option value="UPDATE">Update</option>
-                                    <option value="DELETE">Delete</option>
-                                    <option value="ACTIVATE">Activate</option>
-                                    <option value="DEACTIVATE">Deactivate</option>
-                                    <option value="ROLE_CHANGE">Role change</option>
-                                    <option value="CLONE">Clone</option>
-                                    <option value="ARCHIVE">Archive</option>
-                                    <option value="RESTORE">Restore</option>
+                                    <option value="">Semua aksi</option>
+                                    <option value="CREATE">Tambah</option>
+                                    <option value="UPDATE">Ubah</option>
+                                    <option value="DELETE">Hapus</option>
+                                    <option value="ACTIVATE">Aktifkan</option>
+                                    <option value="DEACTIVATE">Nonaktifkan</option>
+                                    <option value="ROLE_CHANGE">Ubah peran</option>
+                                    <option value="CLONE">Kloning</option>
+                                    <option value="ARCHIVE">Arsipkan</option>
+                                    <option value="RESTORE">Pulihkan</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="text-sm font-medium text-brand-dark">Entity</label>
+                                <label className="text-sm font-medium text-brand-dark">Entitas</label>
                                 <select
                                     value={filterState.entityType}
                                     onChange={(event) => setFilterState((prev) => ({ ...prev, entityType: event.target.value }))}
                                     className={inputClassName}
                                 >
-                                    <option value="">All entities</option>
-                                    <option value="User">User</option>
-                                    <option value="Course">Course</option>
-                                    <option value="AiProvider">AI Provider</option>
+                                    <option value="">Semua entitas</option>
+                                    <option value="User">Pengguna</option>
+                                    <option value="Course">Kelas</option>
+                                    <option value="AiProvider">Provider AI</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="text-sm font-medium text-brand-dark">User ID</label>
+                                <label className="text-sm font-medium text-brand-dark">ID Pengguna</label>
                                 <div className="relative mt-1.5">
                                     <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-600" />
                                     <input
                                         type="text"
                                         value={searchUser}
                                         onChange={(event) => setSearchUser(event.target.value)}
-                                        placeholder="Search by user id"
+                                        placeholder="Cari berdasarkan ID pengguna"
                                         className="block w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-3 pl-9 text-sm text-slate-700 shadow-brand-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
                                     />
                                 </div>
@@ -330,7 +372,7 @@ background: 'var(--dm-accent-bg)',
 
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
                                 <div>
-                                    <label className="text-sm font-medium text-brand-dark">Start date</label>
+                                    <label className="text-sm font-medium text-brand-dark">Tanggal mulai</label>
                                     <input
                                         type="date"
                                         value={filterState.startDate}
@@ -339,7 +381,7 @@ background: 'var(--dm-accent-bg)',
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-brand-dark">End date</label>
+                                    <label className="text-sm font-medium text-brand-dark">Tanggal akhir</label>
                                     <input
                                         type="date"
                                         value={filterState.endDate}
@@ -353,13 +395,13 @@ background: 'var(--dm-accent-bg)',
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
                                 <Filter className="h-3.5 w-3.5" />
-                                Active Filters: {hasActiveFilters ? 'Yes' : 'No'}
+                                Filter aktif: {hasActiveFilters ? 'Ya' : 'Tidak'}
                             </div>
                             <PrimaryButton onClick={applyFilters} className="px-4 py-2 text-sm">
-                                Apply Filters
+                                Terapkan Filter
                             </PrimaryButton>
                             <SecondaryButton onClick={clearFilters} className="px-4 py-2 text-sm">
-                                Clear Filters
+                                Bersihkan Filter
                             </SecondaryButton>
                         </div>
 
@@ -369,12 +411,12 @@ background: 'var(--dm-accent-bg)',
                                 <table className="min-w-full divide-y divide-white/70">
                                 <thead className="bg-white/70">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Timestamp</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">User</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Action</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Entity</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Details</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Changes</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Waktu</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Pengguna</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Aksi</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Entitas</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Detail</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Perubahan</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/70">
@@ -392,7 +434,7 @@ background: 'var(--dm-accent-bg)',
                                                     action={
                                                         hasActiveFilters && (
                                                             <SecondaryButton onClick={clearFilters}>
-                                                                Reset Filter
+                                                                Bersihkan Filter
                                                             </SecondaryButton>
                                                         )
                                                     }
@@ -417,7 +459,7 @@ background: 'var(--dm-accent-bg)',
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-600">
-                                                    <span className="line-clamp-2 text-xs text-slate-500">{JSON.stringify(log.metadata ?? {})}</span>
+                                                    <span className="line-clamp-2 text-xs text-slate-500">{describeDetails(log.metadata)}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <button
@@ -426,7 +468,7 @@ background: 'var(--dm-accent-bg)',
                                                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-brand-primary/35"
                                                     >
                                                         <Eye className="h-4 w-4" />
-                                                        View Changes
+                                                        Lihat Perubahan
                                                     </button>
                                                 </td>
                                             </tr>
@@ -459,21 +501,21 @@ background: 'var(--dm-accent-bg)',
 
                                             <div className="space-y-2 text-sm">
                                                 <div>
-                                                    <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">User</p>
+                                                    <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Pengguna</p>
                                                     <p className="mt-0.5 font-medium text-[var(--dm-text)]">{log.user?.name ?? '-'}</p>
                                                     <p className="text-xs text-[var(--dm-text-secondary)]">{log.user?.email ?? log.userId}</p>
                                                 </div>
 
                                                 <div>
-                                                    <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Entity</p>
+                                                    <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Entitas</p>
                                                     <p className="mt-0.5 font-medium text-[var(--dm-text)]">{log.entityType}</p>
                                                     <p className="text-xs text-[var(--dm-text-secondary)]">{log.entityId}</p>
                                                 </div>
 
                                                 {log.metadata && Object.keys(log.metadata).length > 0 && (
                                                     <div>
-                                                        <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Details</p>
-                                                        <p className="mt-0.5 line-clamp-2 text-xs text-[var(--dm-text-secondary)]">{JSON.stringify(log.metadata)}</p>
+                                                        <p className="text-xs font-medium uppercase tracking-wider text-[var(--dm-text-muted)]">Detail</p>
+                                                        <p className="mt-0.5 line-clamp-2 text-xs text-[var(--dm-text-secondary)]">{describeDetails(log.metadata)}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -485,7 +527,7 @@ background: 'var(--dm-accent-bg)',
                                                     className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-brand-primary/35"
                                                 >
                                                     <Eye className="h-4 w-4" />
-                                                    View Changes
+                                                    Lihat Perubahan
                                                 </button>
                                             )}
                                         </div>

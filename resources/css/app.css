@@ -4,6 +4,11 @@
 @import 'tailwindcss';
 @import 'react-loading-skeleton/dist/skeleton.css';
 
+/* Tailwind v4 defaults the dark variant to prefers-color-scheme, but this app toggles dark mode
+   via the .dark class (useDarkMode). Scope dark: utilities to the class so light UI never picks
+   up dark styles when the OS prefers dark (and vice versa). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Prevent white flash during page transitions */
 body {
     background-color: #E8EDF8;
@@ -477,7 +482,7 @@ a:active,
 .dark .text-\[\#88161c\] { color: var(--dm-accent) !important; }
 .dark .text-slate-700 { color: #D1D5DB !important; }
 .dark .text-slate-600 { color: #9CA3AF !important; }
-.dark .text-slate-500 { color: #6B7280 !important; }
+.dark .text-slate-500 { color: var(--dm-text-secondary) !important; }
 .dark .text-gray-700 { color: #D1D5DB !important; }
 .dark .text-gray-600 { color: #9CA3AF !important; }
 .dark .text-zinc-900 { color: #F3F4F6 !important; }

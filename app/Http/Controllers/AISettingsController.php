@@ -64,6 +64,21 @@ class AISettingsController extends Controller
         }
     }
 
+    public function updateFallbackOrder(Request $request)
+    {
+        try {
+            $response = $this->apiRequest()->put($this->apiUrl() . '/api/admin/ai-providers/fallback-order', $request->all());
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AISettingsController: connection failed updating fallback order', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('AISettingsController: failed to update fallback order', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to update fallback order', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
     public function update(Request $request, string $id)
     {
         try {
@@ -124,6 +139,24 @@ class AISettingsController extends Controller
         }
     }
 
+    public function getModels(Request $request, string $provider)
+    {
+        try {
+            $response = $this->apiRequest()->get(
+                $this->apiUrl() . "/api/admin/ai-providers/{$provider}/models",
+                $request->query()
+            );
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AISettingsController: connection failed fetching provider models', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('AISettingsController: failed to fetch provider models', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to fetch provider models', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
     public function getComparisons(Request $request)
     {
         try {
@@ -179,6 +212,37 @@ class AISettingsController extends Controller
         } catch (\Throwable $e) {
             Log::error('AISettingsController: failed to fetch usage stats', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to fetch usage stats', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
+
+    public function getEmbeddingConfig(Request $request)
+    {
+        try {
+            $response = $this->apiRequest()->get($this->apiUrl() . '/api/admin/embedding-config');
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AISettingsController: connection failed fetching embedding config', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('AISettingsController: failed to fetch embedding config', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to fetch embedding config', 'code' => 'SERVER_ERROR'], 500);
+        }
+    }
+
+    public function updateEmbeddingConfig(Request $request)
+    {
+        try {
+            $response = $this->apiRequest()->put($this->apiUrl() . '/api/admin/embedding-config', $request->all());
+
+            return response()->json($response->json(), $response->status());
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AISettingsController: connection failed updating embedding config', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);
+        } catch (\Throwable $e) {
+            Log::error('AISettingsController: failed to update embedding config', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to update embedding config', 'code' => 'SERVER_ERROR'], 500);
         }
     }
 

@@ -13,8 +13,9 @@ class MasterDataController extends Controller
     {
         $tab = $request->query('tab', 'active');
         $defaultPagination = [
-            'page' => (int) $request->query('page', 1),
-            'limit' => (int) $request->query('limit', 10),
+            // Keep within core list validation bounds (page >= 1, 1 <= limit <= 100).
+            'page' => max(1, (int) $request->query('page', 1)),
+            'limit' => min(100, max(1, (int) $request->query('limit', 10))),
             'total' => 0,
             'totalPages' => 1,
         ];
@@ -219,13 +220,41 @@ class MasterDataController extends Controller
 
         try {
             $endpoint = $tab === 'archived' ? '/api/admin/courses/archived' : '/api/admin/courses';
-            $response = $this->apiRequest()->get($this->apiUrl() . $endpoint, $request->query());
+            $params = array_merge($request->query(), [
+                'page' => $defaultPagination['page'],
+                'limit' => $defaultPagination['limit'],
+            ]);
+            $response = $this->apiRequest()->get($this->apiUrl() . $endpoint, $params);
+            $payload = $response->successful() ? $response->json() : null;
+            $meta = is_array($payload) ? ($payload['meta'] ?? null) : null;
 
-            if ($response->successful()) {
-                $payload = $response->json();
+            // Core echoes the requested page even when it is now past the last page
+            // (e.g. a delete emptied it) — retry on the real last page instead.
+            if (is_array($meta) && (int) ($meta['totalPages'] ?? 0) >= 1 && (int) ($meta['page'] ?? 1) > (int) $meta['totalPages']) {
+                $params['page'] = (int) $meta['totalPages'];
+                $response = $this->apiRequest()->get($this->apiUrl() . $endpoint, $params);
+
+                if ($response->successful()) {
+                    $payload = $response->json();
+                    $meta = is_array($payload) ? ($payload['meta'] ?? null) : null;
+                }
+            }
+
+            if (is_array($payload)) {
                 $data = $payload['data'] ?? [];
                 $courses = $data['courses'] ?? $data;
-                $pagination = $data['pagination'] ?? $payload['pagination'] ?? $defaultPagination;
+            }
+
+            if (is_array($meta)) {
+                $total = (int) ($meta['total'] ?? 0);
+                $totalPages = (int) ($meta['totalPages'] ?? 0);
+                $page = $total === 0 ? 1 : (int) ($meta['page'] ?? $defaultPagination['page']);
+                $pagination = [
+                    'page' => min($page, max($totalPages, 1)),
+                    'limit' => (int) ($meta['limit'] ?? $defaultPagination['limit']),
+                    'total' => $total,
+                    'totalPages' => $totalPages,
+                ];
             }
         } catch (\Throwable $e) {
             Log::warning('MasterDataController: failed to fetch courses', ['error' => $e->getMessage()]);
@@ -253,6 +282,8 @@ class MasterDataController extends Controller
     public function exportData(\Illuminate\Http\Request $request)
     {
         $params = $request->only(['limit', 'sortBy', 'sortOrder']);
+        // Core list validation caps limit at 100.
+        $params['limit'] = min(100, (int) ($params['limit'] ?? 100));
         $response = $this->apiRequest(30, 10)->get($this->apiUrl() . '/api/admin/courses', $params);
         return $this->proxyResponse($response);
     }

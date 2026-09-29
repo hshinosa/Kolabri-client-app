@@ -7,11 +7,11 @@ export async function testProviderConnection(request: TestProviderRequest): Prom
 }
 
 export async function getProviderModels(
-    provider: 'openai' | 'anthropic' | 'gemini',
+    provider: string,
     refresh = false
 ): Promise<ModelListResponse> {
     const response = await axios.get<{ data: ModelListResponse }>(
-        `/admin/ai-providers/${provider}/models`,
+        `/admin/ai-settings/${provider}/models`,
         { params: { refresh } }
     );
     return response.data.data;

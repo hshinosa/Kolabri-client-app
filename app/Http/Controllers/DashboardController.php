@@ -197,8 +197,8 @@ class DashboardController extends Controller
 
         try {
             $usageResponse = $this->apiRequest()->get($this->apiUrl() . '/api/admin/usage-stats', [
-                'startDate' => now()->subDays(30)->toIso8601String(),
-                'endDate' => now()->toIso8601String(),
+                'startDate' => now()->subDays(30)->utc()->toIso8601String(),
+                'endDate' => now()->utc()->toIso8601String(),
             ]);
             if ($usageResponse->successful()) {
                 $usageStats = $usageResponse->json('data');

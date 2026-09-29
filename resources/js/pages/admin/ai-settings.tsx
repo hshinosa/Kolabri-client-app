@@ -14,7 +14,7 @@ import {
     Trash2,
     UserPen,
 } from 'lucide-react';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { ModelFetcher } from '@/components/admin/ModelFetcher';
 import Breadcrumbs from '@/components/dashboard/Breadcrumbs';
@@ -48,6 +48,17 @@ interface ProviderFormData {
     apiKey: string;
     baseUrl: string;
     config: string;
+}
+
+
+interface EmbeddingConfig {
+    provider: string;
+    voyageModel?: string | null;
+    voyageOutputDimension?: number | null;
+    voyageConfigured: boolean;
+    localModel?: string | null;
+    activeProvider: string;
+    degraded: boolean;
 }
 
 interface TestResult {
@@ -218,7 +229,7 @@ function ProviderCard({
                                 : 'border-slate-200 bg-slate-100 text-slate-600'
                         }`}
                     >
-                        {provider.isActive ? 'Active' : 'Inactive'}
+                        {provider.isActive ? 'Aktif' : 'Nonaktif'}
                     </span>
                 </div>
 
@@ -230,12 +241,12 @@ function ProviderCard({
                         <span className="font-medium text-brand-dark dark:text-gray-200">Base URL:</span> {provider.baseUrl || '-'}
                     </p>
                     <p>
-                        <span className="font-medium text-brand-dark dark:text-gray-200">Updated:</span> {formatDate(provider.updatedAt)}
+                        <span className="font-medium text-brand-dark dark:text-gray-200">Diperbarui:</span> {formatDate(provider.updatedAt)}
                     </p>
                 </div>
 
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-white/20 dark:bg-white/5">
-                    <span className="text-xs font-medium text-brand-dark dark:text-gray-200">Set Active</span>
+                    <span className="text-xs font-medium text-brand-dark dark:text-gray-200">Jadikan aktif</span>
                     <div className="flex items-center gap-2">
                         <ToggleSwitch
                             checked={provider.isActive}
@@ -252,7 +263,7 @@ function ProviderCard({
                         onClick={() => onTest(provider)}
                         className="inline-flex h-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 transition hover:border-brand-primary/35 dark:border-white/20 dark:bg-white/5 dark:text-gray-200 dark:hover:border-brand-primary/50"
                     >
-                        Test
+                        Uji
                     </button>
                     <button
                         type="button"
@@ -266,7 +277,7 @@ function ProviderCard({
                         onClick={() => onDelete(provider)}
                         className="inline-flex h-11 touch-manipulation items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-2 text-xs text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-900/20 dark:hover:bg-rose-900/30"
                     >
-                        Delete
+                        Hapus
                     </button>
                 </div>
             </div>
@@ -312,12 +323,47 @@ export default function AdminAiSettingsPage({ providers }: PageProps) {
     const [showEditApiKey, setShowEditApiKey] = useState(false);
     const [savingFallbackOrder, setSavingFallbackOrder] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [embeddingConfig, setEmbeddingConfig] = useState<EmbeddingConfig | null>(null);
+    const [embeddingLoading, setEmbeddingLoading] = useState(false);
+    const [embeddingSwitching, setEmbeddingSwitching] = useState<string | null>(null);
 
     const activeProvider = useMemo(() => providerList.find((provider) => provider.isActive) ?? null, [providerList]);
     const fallbackProviders = useMemo(
         () => [...providerList].sort((a, b) => (a.fallbackOrder ?? Number.MAX_SAFE_INTEGER) - (b.fallbackOrder ?? Number.MAX_SAFE_INTEGER)),
         [providerList],
     );
+
+
+    const fetchEmbeddingConfig = async () => {
+        setEmbeddingLoading(true);
+        try {
+            const response = await axios.get<EmbeddingConfig | { data: EmbeddingConfig }>('/admin/ai-settings/embedding-config');
+            const payload = response.data as EmbeddingConfig | { data: EmbeddingConfig };
+            // BFF passes the engine payload through unchanged (no data wrapper).
+            setEmbeddingConfig('data' in payload ? payload.data : payload);
+        } catch (error) {
+            toast.error(extractErrorMessage(error, 'Gagal memuat konfigurasi embedding.'));
+        } finally {
+            setEmbeddingLoading(false);
+        }
+    };
+
+    const handleSwitchEmbedding = async (provider: 'voyage' | 'local') => {
+        setEmbeddingSwitching(provider);
+        try {
+            await axios.put('/admin/ai-settings/embedding-config', { provider });
+            toast.success(provider === 'voyage' ? 'Provider embedding diganti ke Voyage AI.' : 'Provider embedding diganti ke Local (FastEmbed).');
+            await fetchEmbeddingConfig();
+        } catch (error) {
+            toast.error(extractErrorMessage(error, 'Gagal mengganti provider embedding.'));
+        } finally {
+            setEmbeddingSwitching(null);
+        }
+    };
+
+    useEffect(() => {
+        void fetchEmbeddingConfig();
+    }, []);
 
     const syncProviders = () => {
         setIsSyncing(true);
@@ -345,7 +391,7 @@ export default function AdminAiSettingsPage({ providers }: PageProps) {
                 config: JSON.stringify(config, null, 2),
             };
         });
-        toast.success(`Model ${modelId} selected`);
+        toast.success(`Model ${modelId} dipilih`);
     };
 
     const handleEditModelSelect = (modelId: string) => {
@@ -362,7 +408,7 @@ export default function AdminAiSettingsPage({ providers }: PageProps) {
                 config: JSON.stringify(config, null, 2),
             };
         });
-        toast.success(`Model ${modelId} selected`);
+        toast.success(`Model ${modelId} dipilih`);
     };
 
     const resetCreateForm = () => {
@@ -446,11 +492,11 @@ export default function AdminAiSettingsPage({ providers }: PageProps) {
         const errors: Record<string, string> = {};
 
         if (!isEdit && !form.name.trim()) {
-            errors.name = 'Provider name wajib diisi.';
+            errors.name = 'Nama provider wajib diisi.';
         }
 
         if (!form.displayName.trim()) {
-            errors.displayName = 'Display name wajib diisi.';
+            errors.displayName = 'Nama tampilan wajib diisi.';
         }
 
         if (!isEdit && !form.apiKey.trim()) {
@@ -571,9 +617,9 @@ export default function AdminAiSettingsPage({ providers }: PageProps) {
                 testPrompt,
             });
             setTestResult(response.data.data);
-            toast.success('Test connection berhasil.');
+            toast.success('Uji koneksi berhasil.');
         } catch (error) {
-            toast.error(extractErrorMessage(error, 'Gagal melakukan test connection.'));
+            toast.error(extractErrorMessage(error, 'Gagal melakukan uji koneksi.'));
         } finally {
             setIsTestingConnection(false);
         }
@@ -732,7 +778,7 @@ background: 'var(--dm-accent-bg)',
                                                                         : 'border-slate-200 bg-slate-100 text-slate-600'
                                                                 }`}
                                                             >
-                                                                {provider.isActive ? 'Active' : 'Inactive'}
+                                                                {provider.isActive ? 'Aktif' : 'Nonaktif'}
                                                             </span>
                                                             <ToggleSwitch
                                                                 checked={provider.isActive}
@@ -770,7 +816,7 @@ background: 'var(--dm-accent-bg)',
                                                                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-brand-dark transition hover:bg-black/5 dark:text-gray-200 dark:hover:bg-white/10"
                                                                 >
                                                                     <TestTube2 className="h-4 w-4" />
-                                                                    Test Connection
+                                                                    Uji koneksi
                                                                 </button>
                                                                 <button
                                                                     type="button"
@@ -778,7 +824,7 @@ background: 'var(--dm-accent-bg)',
                                                                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-brand-dark transition hover:bg-black/5 dark:text-gray-200 dark:hover:bg-white/10"
                                                                 >
                                                                     <Power className="h-4 w-4" />
-                                                                    Set Active
+                                                                    Jadikan aktif
                                                                 </button>
                                                                 <button
                                                                     type="button"
@@ -786,7 +832,7 @@ background: 'var(--dm-accent-bg)',
                                                                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-900/20"
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
-                                                                    Delete
+                                                                    Hapus
                                                                 </button>
                                                             </div>
                                                         ) : null}
@@ -818,11 +864,91 @@ background: 'var(--dm-accent-bg)',
                     )}
                 </motion.div>
 
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06, duration: 0.4 }}>
+                    <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg font-semibold text-brand-dark dark:text-gray-100">Embedding</h2>
+                                <p className="mt-1 text-sm text-brand-muted-dark dark:text-gray-300">
+                                    Provider embedding untuk RAG, grounding, dan deteksi off-topic. Voyage AI berjalan remote; Local (FastEmbed) berjalan on-device sebagai backup.
+                                </p>
+                            </div>
+                            {embeddingLoading ? <Loader2 className="h-5 w-5 animate-spin text-brand-primary" /> : null}
+                        </div>
+
+                        {embeddingConfig ? (
+                            <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    disabled={embeddingConfig.provider === 'voyage' || embeddingSwitching !== null || !embeddingConfig.voyageConfigured}
+                                    onClick={() => void handleSwitchEmbedding('voyage')}
+                                    className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed ${
+                                        embeddingConfig.provider === 'voyage'
+                                            ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/30'
+                                            : 'border-slate-200 bg-white/70 hover:border-brand-primary/40 disabled:opacity-50 dark:border-white/20 dark:bg-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <p className="font-semibold text-brand-dark dark:text-gray-100">Voyage AI</p>
+                                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${
+                                            embeddingConfig.provider === 'voyage'
+                                                ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
+                                                : 'border-slate-200 bg-slate-100 text-slate-600'
+                                        }`}>
+                                            {embeddingConfig.provider === 'voyage' ? 'Aktif' : 'Siaga'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-sm text-brand-muted-dark break-words dark:text-gray-600">
+                                        {embeddingConfig.voyageModel || 'voyage-3.5'} • dim {embeddingConfig.voyageOutputDimension ?? 1024}
+                                    </p>
+                                    {!embeddingConfig.voyageConfigured ? (
+                                        <p className="mt-1 text-xs text-amber-600">API key belum dikonfigurasi di server.</p>
+                                    ) : null}
+                                    {embeddingSwitching === 'voyage' ? <Loader2 className="mt-2 h-4 w-4 animate-spin text-brand-primary" /> : null}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    disabled={embeddingConfig.provider === 'local' || embeddingSwitching !== null}
+                                    onClick={() => void handleSwitchEmbedding('local')}
+                                    className={`rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed ${
+                                        embeddingConfig.provider === 'local'
+                                            ? 'border-brand-primary bg-brand-primary/5 ring-2 ring-brand-primary/30'
+                                            : 'border-slate-200 bg-white/70 hover:border-brand-primary/40 disabled:opacity-50 dark:border-white/20 dark:bg-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <p className="font-semibold text-brand-dark dark:text-gray-100">Local (FastEmbed)</p>
+                                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${
+                                            embeddingConfig.provider === 'local'
+                                                ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
+                                                : 'border-slate-200 bg-slate-100 text-slate-600'
+                                        }`}>
+                                            {embeddingConfig.provider === 'local' ? 'Aktif' : 'Cadangan'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-sm text-brand-muted-dark break-words dark:text-gray-600">
+                                        {embeddingConfig.localModel || 'paraphrase-multilingual-MiniLM-L12-v2'} • on-device
+                                    </p>
+                                    {embeddingConfig.degraded ? (
+                                        <p className="mt-1 text-xs text-amber-600">Voyage tidak tersedia — fallback lokal aktif.</p>
+                                    ) : null}
+                                    {embeddingSwitching === 'local' ? <Loader2 className="mt-2 h-4 w-4 animate-spin text-brand-primary" /> : null}
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="mt-5 text-sm text-brand-muted-dark dark:text-gray-600">
+                                {embeddingLoading ? 'Memuat konfigurasi embedding…' : 'Konfigurasi embedding tidak tersedia (AI engine tidak terjangkau).'}
+                            </p>
+                        )}
+                    </LiquidGlassCard>
+                </motion.div>
+
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.4 }}>
                     <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-lg font-semibold text-brand-dark dark:text-gray-100">Fallback Order</h2>
+                                <h2 className="text-lg font-semibold text-brand-dark dark:text-gray-100">Urutan fallback</h2>
                                 <p className="mt-1 text-sm text-brand-muted-dark dark:text-gray-300">
                                     Urutan ini menentukan provider cadangan saat provider utama gagal. Pindahkan provider ke atas atau bawah untuk mengatur chain 1st → 2nd → 3rd.
                                 </p>
@@ -835,7 +961,7 @@ background: 'var(--dm-accent-bg)',
                                 <div key={provider.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 dark:border-white/20 dark:bg-white/5">
                                     <div>
                                         <p className="font-medium text-brand-dark dark:text-gray-100">{index + 1}. {provider.displayName}</p>
-                                        <p className="text-xs text-brand-muted-dark dark:text-gray-600">{provider.name} {provider.isActive ? '• active' : '• standby'}</p>
+                                        <p className="text-xs text-brand-muted-dark dark:text-gray-600">{provider.name} {provider.isActive ? '• aktif' : '• siaga'}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -844,7 +970,7 @@ background: 'var(--dm-accent-bg)',
                                             onClick={() => void moveFallbackProvider(provider.id, 'up')}
                                             className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
-                                            Move Up
+                                            Naikkan
                                         </button>
                                         <button
                                             type="button"
@@ -852,7 +978,7 @@ background: 'var(--dm-accent-bg)',
                                             onClick={() => void moveFallbackProvider(provider.id, 'down')}
                                             className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
-                                            Move Down
+                                            Turunkan
                                         </button>
                                     </div>
                                 </div>
@@ -864,7 +990,7 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showCreateModal}
-                title="Add AI Provider"
+                title="Tambah Provider AI"
                 description="Tambahkan provider baru lengkap dengan API key, base URL, dan advanced config JSON."
                 onClose={closeCreateModal}
                 scrollable
@@ -872,7 +998,7 @@ background: 'var(--dm-accent-bg)',
                 <form onSubmit={handleCreateProvider} className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Provider Name</label>
+                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Nama provider</label>
                             <input
                                 value={createForm.name}
                                 onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -882,7 +1008,7 @@ background: 'var(--dm-accent-bg)',
                             <InputError message={createErrors.name} className="mt-2" />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Display Name</label>
+                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Nama tampilan</label>
                             <input
                                 value={createForm.displayName}
                                 onChange={(event) => setCreateForm((prev) => ({ ...prev, displayName: event.target.value }))}
@@ -944,11 +1070,11 @@ background: 'var(--dm-accent-bg)',
 
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <SecondaryButton onClick={closeCreateModal}>
-                            Cancel
+                            Batal
                         </SecondaryButton>
-                        <PrimaryButton disabled={createProcessing} className="inline-flex items-center gap-2">
+                        <PrimaryButton type="submit" disabled={createProcessing} className="inline-flex items-center gap-2">
                             {createProcessing ? buttonSpinner : <Plus className="h-4 w-4" />}
-                            Save Provider
+                            Simpan provider
                         </PrimaryButton>
                     </div>
                 </form>
@@ -956,7 +1082,7 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showEditModal}
-                title="Edit AI Provider"
+                title="Ubah Provider AI"
                 description="Perbarui display name, API key, base URL, atau advanced config untuk provider ini."
                 onClose={closeEditModal}
                 scrollable
@@ -964,11 +1090,11 @@ background: 'var(--dm-accent-bg)',
                 <form onSubmit={handleUpdateProvider} className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Provider Name</label>
+                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Nama provider</label>
                             <input value={editForm.name} disabled className={`${inputClassName} cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-gray-800 dark:text-gray-500`} />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Display Name</label>
+                            <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Nama tampilan</label>
                             <input
                                 value={editForm.displayName}
                                 onChange={(event) => setEditForm((prev) => ({ ...prev, displayName: event.target.value }))}
@@ -979,7 +1105,7 @@ background: 'var(--dm-accent-bg)',
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-brand-dark dark:text-gray-200">New API Key</label>
+                        <label className="text-sm font-medium text-brand-dark dark:text-gray-200">API key baru</label>
                         <div className="relative">
                             <input
                                 type={showEditApiKey ? 'text' : 'password'}
@@ -996,7 +1122,7 @@ background: 'var(--dm-accent-bg)',
                                 {showEditApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
-                        <p className="mt-2 text-xs text-brand-muted-dark dark:text-gray-600">Current key: {selectedProvider?.apiKeyMasked ?? '-'}</p>
+                        <p className="mt-2 text-xs text-brand-muted-dark dark:text-gray-600">API key saat ini: {selectedProvider?.apiKeyMasked ?? '-'}</p>
                         <InputError message={editErrors.apiKey} className="mt-2" />
                     </div>
 
@@ -1031,16 +1157,16 @@ background: 'var(--dm-accent-bg)',
                     <div className="flex items-center justify-between gap-3 pt-2">
                         <SecondaryButton onClick={() => selectedProvider && openTest(selectedProvider)} className="inline-flex items-center gap-2">
                             <TestTube2 className="h-4 w-4" />
-                            Test Connection
+                            Uji koneksi
                         </SecondaryButton>
 
                         <div className="flex items-center gap-3">
                             <SecondaryButton onClick={closeEditModal}>
-                                Cancel
+                                Batal
                             </SecondaryButton>
-                            <PrimaryButton disabled={editProcessing} className="inline-flex items-center gap-2">
+                            <PrimaryButton type="submit" disabled={editProcessing} className="inline-flex items-center gap-2">
                                 {editProcessing ? buttonSpinner : <CheckCircle2 className="h-4 w-4" />}
-                                Save Changes
+                                Simpan perubahan
                             </PrimaryButton>
                         </div>
                     </div>
@@ -1049,7 +1175,7 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showDeleteModal}
-                title="Delete AI Provider"
+                title="Hapus Provider AI"
                 description="Provider yang dihapus tidak bisa dikembalikan. Pastikan provider ini memang tidak lagi dipakai."
                 onClose={closeDeleteModal}
                 maxWidth="max-w-lg"
@@ -1062,7 +1188,7 @@ background: 'var(--dm-accent-bg)',
 
                     <div className="flex items-center justify-end gap-3">
                         <SecondaryButton onClick={closeDeleteModal}>
-                            Cancel
+                            Batal
                         </SecondaryButton>
                         <button
                             type="button"
@@ -1071,7 +1197,7 @@ background: 'var(--dm-accent-bg)',
                             className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-70"
                         >
                             {deleteProcessing ? buttonSpinner : <Trash2 className="h-4 w-4" />}
-                            Delete Provider
+                            Hapus provider
                         </button>
                     </div>
                 </div>
@@ -1079,8 +1205,8 @@ background: 'var(--dm-accent-bg)',
 
             <FormModal
                 open={showTestModal}
-                title="Test Connection"
-                description="Jalankan real connection test ke provider yang dipilih untuk memastikan API key, model, dan konfigurasi fallback siap dipakai."
+                title="Uji koneksi"
+                description="Jalankan uji koneksi langsung ke provider yang dipilih untuk memastikan API key, model, dan konfigurasi fallback siap dipakai."
                 onClose={closeTestModal}
                 maxWidth="max-w-xl"
                 scrollable
@@ -1091,22 +1217,22 @@ background: 'var(--dm-accent-bg)',
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Test Prompt</label>
+                        <label className="text-sm font-medium text-brand-dark dark:text-gray-200">Prompt uji</label>
                         <textarea
                             value={testPrompt}
                             onChange={(event) => setTestPrompt(event.target.value)}
                             className={`${inputClassName} min-h-28`}
-                            placeholder="Say hello"
+                            placeholder="Katakan halo"
                         />
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
                         <SecondaryButton onClick={closeTestModal}>
-                            Close
+                            Tutup
                         </SecondaryButton>
                         <PrimaryButton onClick={handleTestConnection} disabled={isTestingConnection} className="inline-flex items-center gap-2">
                             {isTestingConnection ? buttonSpinner : <TestTube2 className="h-4 w-4" />}
-                            Run Test Connection
+                            Jalankan uji koneksi
                         </PrimaryButton>
                     </div>
 
@@ -1114,7 +1240,7 @@ background: 'var(--dm-accent-bg)',
                         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-900/20">
                             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                                 <CheckCircle2 className="h-5 w-5" />
-                                <p className="font-semibold">Test berhasil</p>
+                                <p className="font-semibold">Uji berhasil</p>
                             </div>
                             <div className="mt-3 space-y-2 text-sm text-brand-dark dark:text-gray-200">
                                 <p>
@@ -1124,10 +1250,10 @@ background: 'var(--dm-accent-bg)',
                                     <strong>Model:</strong> {testResult.model}
                                 </p>
                                 <p>
-                                    <strong>Latency:</strong> {testResult.latency} ms
+                                    <strong>Latensi:</strong> {testResult.latency} ms
                                 </p>
                                 <div>
-                                    <strong>Response:</strong>
+                                    <strong>Respons:</strong>
                                     <div className="mt-2 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-brand-dark dark:border-emerald-900/50 dark:bg-emerald-900/10 dark:text-gray-200">
                                         {testResult.response}
                                     </div>

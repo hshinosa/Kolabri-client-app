@@ -22,7 +22,7 @@ import { LiquidGlassCard, SecondaryButton, OrganicBlob } from '@/components/Welc
 import { BaseModal } from '@/components/ui/BaseModal';
 import { SkeletonDashboard, SkeletonStatCard } from '@/components/ui/skeletons';
 import { toast } from '@/components/ui/toaster';
-import { connectWebSocket } from '@/lib/websocket';
+import { connectWebSocket, type AdminSocketHandle } from '@/lib/websocket';
 import Breadcrumbs from '@/components/dashboard/Breadcrumbs';
 import { EnhancedStatCard } from '@/components/dashboard/EnhancedStatCard';
 import AppLayout from '@/layouts/app-layout';
@@ -266,15 +266,15 @@ function normalizeRangeState(value?: Partial<DateRangeState> | null): DateRangeS
 function getPresetLabel(preset: DateRangePreset) {
     switch (preset) {
         case '7d':
-            return 'Last 7 days';
+            return '7 hari terakhir';
         case '30d':
-            return 'Last 30 days';
+            return '30 hari terakhir';
         case '90d':
-            return 'Last 90 days';
+            return '90 hari terakhir';
         case 'custom':
-            return 'Custom range';
+            return 'Rentang kustom';
         default:
-            return 'Last 7 days';
+            return '7 hari terakhir';
     }
 }
 
@@ -292,12 +292,12 @@ function DateRangeModal({
     onApply: () => void;
 }) {
     return (
-        <BaseModal open={open} title="Custom date range" onClose={onClose} size="md" className="rounded-3xl border border-white/70 bg-white/95 p-6 shadow-2xl">
+        <BaseModal open={open} title="Rentang tanggal kustom" onClose={onClose} size="md" className="rounded-3xl border border-white/70 bg-white/95 p-6 shadow-2xl">
             <div>
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="text-lg font-semibold text-brand-dark">Custom date range</h3>
-                        <p className="mt-1 text-sm text-brand-muted-dark">Select a start and end date for dashboard stats, charts, and AI usage.</p>
+                        <h3 className="text-lg font-semibold text-brand-dark">Rentang tanggal kustom</h3>
+                        <p className="mt-1 text-sm text-brand-muted-dark">Pilih tanggal mulai dan akhir untuk statistik dasbor, grafik, serta penggunaan AI.</p>
                     </div>
                     <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 transition hover:bg-black/5 hover:text-brand-dark">
                         ×
@@ -306,7 +306,7 @@ function DateRangeModal({
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label className="text-sm font-medium text-brand-dark">Start date</label>
+                        <label className="text-sm font-medium text-brand-dark">Tanggal mulai</label>
                         <input
                             type="date"
                             value={value.startDate}
@@ -315,7 +315,7 @@ function DateRangeModal({
                         />
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-brand-dark">End date</label>
+                        <label className="text-sm font-medium text-brand-dark">Tanggal akhir</label>
                         <input
                             type="date"
                             value={value.endDate}
@@ -327,14 +327,14 @@ function DateRangeModal({
 
                 <div className="mt-6 flex gap-3">
                     <SecondaryButton onClick={onClose} className="flex-1 justify-center px-4 py-2.5 text-sm">
-                        Cancel
+                        Batal
                     </SecondaryButton>
                     <button
                         type="button"
                         onClick={onApply}
                         className="inline-flex flex-1 items-center justify-center rounded-full bg-brand-primary px-4 py-2.5 text-sm font-medium text-white shadow-brand-sm transition hover:opacity-90"
                     >
-                        Apply range
+                        Terapkan rentang
                     </button>
                 </div>
             </div>
@@ -350,7 +350,7 @@ function UserGrowthChart({ data, isLoading }: { data: Array<{ label: string; cou
     if (data.length === 0) {
         return (
             <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/30 text-sm text-brand-muted-dark">
-                No data available
+                Tidak ada data
             </div>
         );
     }
@@ -396,7 +396,7 @@ function MessageActivityChart({ data, isLoading }: { data: Array<{ label: string
     if (data.length === 0) {
         return (
             <div className="flex h-[260px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/30 text-sm text-brand-muted-dark">
-                No data available
+                Tidak ada data
             </div>
         );
     }
@@ -507,7 +507,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
     const [dashboardActivities, setDashboardActivities] = useState<DashboardActivity[]>(activities);
     const [dashboardUsageStats, setDashboardUsageStats] = useState<UsageStats | null>(usageStats ?? null);
     const [isStatsLoading, setIsStatsLoading] = useState(typeof stats === 'undefined');
-    const [isSocketConnected, setIsSocketConnected] = useState(false);
+    const [socketStatus, setSocketStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
     const [isRangeModalOpen, setIsRangeModalOpen] = useState(false);
     const [dateRange, setDateRange] = useState<DateRangeState>(() => {
         if (typeof window === 'undefined') {
@@ -575,7 +575,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
             setDashboardActivities(response.data.data.activities ?? []);
             setDashboardUsageStats(response.data.data.usageStats ?? null);
         } catch {
-            toast.error('Failed to refresh dashboard data.');
+            toast.error('Gagal memuat ulang data dasbor.');
         } finally {
             setIsStatsLoading(false);
         }
@@ -586,12 +586,20 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
     }, [dateRange, fetchDashboardData]);
 
     useEffect(() => {
-        let socket: WebSocket | null = null;
+        let cancelled = false;
+        let socket: AdminSocketHandle | null = null;
 
+        setSocketStatus('connecting');
         void connectWebSocket({
-            onOpen: () => setIsSocketConnected(true),
-            onClose: () => setIsSocketConnected(false),
-            onError: () => setIsSocketConnected(false),
+            onOpen: () => {
+                if (!cancelled) setSocketStatus('connected');
+            },
+            onClose: () => {
+                if (!cancelled) setSocketStatus('disconnected');
+            },
+            onError: () => {
+                if (!cancelled) setSocketStatus('disconnected');
+            },
             onMessage: (message) => {
                 if (message.event === 'dashboard:stats:update') {
                     void fetchDashboardData(dateRange);
@@ -599,11 +607,15 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
             },
         }).then((instance) => {
             socket = instance;
+            if (cancelled) {
+                instance.close();
+            }
         }).catch(() => {
-            setIsSocketConnected(false);
+            if (!cancelled) setSocketStatus('disconnected');
         });
 
         return () => {
+            cancelled = true;
             socket?.close();
         };
     }, [dateRange, fetchDashboardData]);
@@ -663,7 +675,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
 
     const statsCards = [
         {
-            title: 'Total Users',
+            title: 'Total Pengguna',
             value: formatNumber(safeStats.users.total),
             icon: Users,
             accent: {
@@ -671,11 +683,11 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                 border: '1px solid rgba(59,130,246,0.18)',
                 text: '#2563EB',
             },
-            helper: `${formatNumber(safeStats.users.activeLast24h)} active in the last 24h`,
-            subtext: `${formatNumber(safeStats.users.byRole.student)} students • ${formatNumber(safeStats.users.byRole.lecturer)} lecturers • ${formatNumber(safeStats.users.byRole.admin)} admins • ${formatNumber(safeStats.users.newLast7Days)} new this week`,
+            helper: `${formatNumber(safeStats.users.activeLast24h)} aktif dalam 24 jam terakhir`,
+            subtext: `${formatNumber(safeStats.users.byRole.student)} mahasiswa • ${formatNumber(safeStats.users.byRole.lecturer)} dosen • ${formatNumber(safeStats.users.byRole.admin)} admin • ${formatNumber(safeStats.users.newLast7Days)} baru minggu ini`,
         },
         {
-            title: 'Active Courses',
+            title: 'Kelas Aktif',
             value: formatNumber(safeStats.courses.active),
             icon: BookOpen,
             accent: {
@@ -687,7 +699,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
             subtext: `${formatNumber(safeStats.courses.totalGroups)} grup dan ${formatNumber(safeStats.courses.totalSessionDiscussions)} sesi diskusi mendukung aktivitas diskusi`,
         },
         {
-            title: 'Messages Today',
+            title: 'Pesan Hari Ini',
             value: formatNumber(safeStats.discussions.messagesToday),
             icon: MessageSquare,
             accent: {
@@ -695,14 +707,14 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                 border: '1px solid rgba(168,85,247,0.18)',
                 text: '#9333EA',
             },
-            helper: `${formatNumber(safeStats.discussions.aiInteractions)} AI-assisted interactions`,
-            subtext: `Average ${formatNumber(safeStats.discussions.avgMessagesPerDiscussion, {
+            helper: `${formatNumber(safeStats.discussions.aiInteractions)} interaksi berbantuan AI`,
+            subtext: `Rata-rata ${formatNumber(safeStats.discussions.avgMessagesPerDiscussion, {
                 maximumFractionDigits: 1,
                 minimumFractionDigits: 1,
-            })} messages per discussion across ${formatNumber(safeStats.discussions.totalMessages)} total messages`,
+            })} pesan per diskusi dari ${formatNumber(safeStats.discussions.totalMessages)} pesan total`,
         },
         {
-            title: 'Quality Score',
+            title: 'Skor Kualitas',
             value: formatNumber(safeStats.engagement.qualityScore, {
                 minimumFractionDigits: 1,
                 maximumFractionDigits: 1,
@@ -716,13 +728,13 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
             helper: `${formatNumber(safeStats.engagement.hotThinkingPercentage, {
                 minimumFractionDigits: 1,
                 maximumFractionDigits: 1,
-            })}% HOT thinking coverage`,
+            })}% cakupan berpikir HOT`,
             subtext: safeStats.engagement.mostActiveCourse
-                ? `Most active course: ${safeStats.engagement.mostActiveCourse.name} with ${formatNumber(safeStats.engagement.mostActiveCourse.messageCount)} messages`
-                : 'Most active course data will appear here once discussion activity is available.',
+                ? `Kelas paling aktif: ${safeStats.engagement.mostActiveCourse.name} dengan ${formatNumber(safeStats.engagement.mostActiveCourse.messageCount)} pesan`
+                : 'Data kelas paling aktif akan muncul setelah ada aktivitas diskusi.',
         },
         {
-            title: 'AI Usage',
+            title: 'Penggunaan AI',
             value: formatNumber(safeUsageStats.totalTokens),
             icon: WandSparkles,
             accent: {
@@ -730,8 +742,8 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                 border: '1px solid rgba(14,165,233,0.18)',
                 text: '#0284C7',
             },
-            helper: `Estimated $${safeUsageStats.estimatedCost.toFixed(4)} this month`,
-            subtext: `${safeUsageStats.mostUsedModel ?? 'No model yet'} • avg ${formatNumber(safeUsageStats.averageLatency)} ms • ${formatNumber(safeUsageStats.requestCount)} requests`,
+            helper: `Perkiraan $${safeUsageStats.estimatedCost.toFixed(4)} bulan ini`,
+            subtext: `${safeUsageStats.mostUsedModel ?? 'Belum ada model'} • rata-rata ${formatNumber(safeUsageStats.averageLatency)} ms • ${formatNumber(safeUsageStats.requestCount)} permintaan`,
         },
     ];
 
@@ -766,8 +778,20 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                         </h1>
                                          <p className="mt-1 text-sm text-brand-muted-dark">Ringkasan platform untuk administrasi, aktivitas pembelajaran, dan tata kelola AI.</p>
                                          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-600">
-                                             <span className={`h-2.5 w-2.5 rounded-full ${isSocketConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                             {isSocketConnected ? 'WebSocket tersambung' : 'WebSocket terputus'}
+                                             <span
+                                                 className={`h-2.5 w-2.5 rounded-full ${
+                                                     socketStatus === 'connected'
+                                                         ? 'bg-emerald-500'
+                                                         : socketStatus === 'connecting'
+                                                           ? 'bg-amber-500'
+                                                           : 'bg-rose-500'
+                                                 }`}
+                                             />
+                                             {socketStatus === 'connected'
+                                                 ? 'WebSocket tersambung'
+                                                 : socketStatus === 'connecting'
+                                                   ? 'Menghubungkan…'
+                                                   : 'WebSocket terputus'}
                                          </div>
                                      </div>
                                  </div>
@@ -808,15 +832,15 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                 <div className="rounded-2xl border border-white/70 bg-white/60 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <p className="text-xs uppercase tracking-[0.2em] text-gray-600">Date Range</p>
+                                            <p className="text-xs uppercase tracking-[0.2em] text-gray-600">Rentang Tanggal</p>
                                             <p className="mt-2 text-sm font-semibold text-brand-dark">{getPresetLabel(dateRange.preset)}</p>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => setIsRangeModalOpen(true)}
-                                            className="rounded-full border border-brand-primary/15 bg-brand-primary/8 px-3 py-2 text-xs font-medium text-brand-primary transition hover:bg-brand-primary/12"
+                                            className="rounded-full border border-brand-primary/15 bg-brand-primary/8 px-3 py-2 text-xs font-medium text-brand-primary transition hover:bg-brand-primary/12 dark:border-red-400/25 dark:bg-red-400/10 dark:text-red-400 dark:hover:bg-red-400/20"
                                         >
-                                            Change range
+                                            Ubah rentang
                                         </button>
                                     </div>
                                     <p className="mt-2 text-xs text-slate-500">
@@ -838,28 +862,28 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                 <SecondaryButton href="/admin/users" lightMode={true} className="w-full justify-between rounded-2xl px-5 py-4">
                                     <span className="inline-flex items-center gap-2">
                                         <Users className="h-4 w-4" />
-                                        User Management
+                                        Kelola Pengguna
                                     </span>
                                     <ArrowRight className="h-4 w-4" />
                                 </SecondaryButton>
                                 <SecondaryButton href="/admin/master-data" lightMode={true} className="w-full justify-between rounded-2xl px-5 py-4">
                                     <span className="inline-flex items-center gap-2">
                                         <Database className="h-4 w-4" />
-                                        Master Data
+                                        Data Kelas
                                     </span>
                                     <ArrowRight className="h-4 w-4" />
                                 </SecondaryButton>
                                 <SecondaryButton href="/admin/ai-settings" lightMode={true} className="w-full justify-between rounded-2xl px-5 py-4">
                                     <span className="inline-flex items-center gap-2">
                                         <Settings className="h-4 w-4" />
-                                        AI Settings
+                                        Pengaturan AI
                                     </span>
                                     <ArrowRight className="h-4 w-4" />
                                 </SecondaryButton>
                                 <SecondaryButton href="/admin/audit-log" lightMode={true} className="w-full justify-between rounded-2xl px-5 py-4">
                                     <span className="inline-flex items-center gap-2">
                                         <Shield className="h-4 w-4" />
-                                        Audit Log
+                                        Log Audit
                                     </span>
                                     <ArrowRight className="h-4 w-4" />
                                 </SecondaryButton>
@@ -893,9 +917,9 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                     >
                         <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
                                 <h3 className="text-lg font-semibold" style={headingStyle}>
-                                    User Growth ({getPresetLabel(dateRange.preset)})
+                                    Pertumbuhan Pengguna ({getPresetLabel(dateRange.preset)})
                                 </h3>
-                            <p className="mt-2 text-sm text-brand-muted-dark">New users per day.</p>
+                            <p className="mt-2 text-sm text-brand-muted-dark">Pengguna baru per hari.</p>
                             <div className="mt-4">
                                 <UserGrowthChart data={userGrowthData} isLoading={isStatsLoading} />
                             </div>
@@ -909,9 +933,9 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                     >
                         <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
                                 <h3 className="text-lg font-semibold" style={headingStyle}>
-                                    Message Activity ({getPresetLabel(dateRange.preset)})
+                                    Aktivitas Pesan ({getPresetLabel(dateRange.preset)})
                                 </h3>
-                            <p className="mt-2 text-sm text-brand-muted-dark">Messages per day.</p>
+                            <p className="mt-2 text-sm text-brand-muted-dark">Pesan per hari.</p>
                             <div className="mt-4">
                                 <MessageActivityChart data={messageActivityData} isLoading={isStatsLoading} />
                             </div>
@@ -926,9 +950,9 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                 >
                     <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
                         <h3 className="text-lg font-semibold" style={headingStyle}>
-                            AI Token Usage (Last 30 Days)
+                            Penggunaan Token AI (30 Hari Terakhir)
                         </h3>
-                        <p className="mt-2 text-sm text-brand-muted-dark">Monthly AI usage trend across all tracked requests.</p>
+                        <p className="mt-2 text-sm text-brand-muted-dark">Tren penggunaan AI bulanan dari seluruh permintaan yang tercatat.</p>
                         <div className="mt-4">
                             <MessageActivityChart data={usageChartData} isLoading={isStatsLoading} />
                         </div>
@@ -946,30 +970,30 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                 <div>
                                     <div className="inline-flex items-center gap-2 rounded-full border border-brand-primary/10 bg-brand-primary/5 px-3 py-1 text-xs font-medium text-brand-primary">
                                         <BrainCircuit className="h-3.5 w-3.5" />
-                                        Engagement snapshot
+                                        Ringkasan keterlibatan
                                     </div>
                                     <h2 className="mt-4 text-xl font-semibold" style={headingStyle}>
-                                        Learning quality highlights
+                                        Sorotan kualitas pembelajaran
                                     </h2>
                                     <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-muted-dark">
-                                        This section summarizes the signals behind the scorecards so admins can quickly understand whether activity is growing in a healthy way.
+                                        Bagian ini merangkum sinyal di balik kartu skor agar admin cepat memahami apakah aktivitas tumbuh dengan sehat.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="mt-6 grid gap-4 md:grid-cols-2">
                                 <div className="rounded-3xl border border-white/60 bg-white/35 p-5">
-                                    <p className="text-sm font-medium text-brand-muted-dark">AI-assisted discussions</p>
+                                    <p className="text-sm font-medium text-brand-muted-dark">Diskusi berbantuan AI</p>
                                     <p className="mt-3 text-3xl font-bold" style={headingStyle}>
                                         {formatNumber(safeStats.discussions.aiInteractions)}
                                     </p>
                                     <p className="mt-2 text-sm leading-6 text-brand-muted-dark">
-                                        AI responses are contributing to classroom discussions and can be used as a quick signal for adoption of guided collaboration.
+                                        Jawaban AI berkontribusi pada diskusi kelas dan bisa dijadikan sinyal cepat adopsi kolaborasi terarah.
                                     </p>
                                 </div>
 
                                 <div className="rounded-3xl border border-white/60 bg-white/35 p-5">
-                                    <p className="text-sm font-medium text-brand-muted-dark">HOT thinking rate</p>
+                                    <p className="text-sm font-medium text-brand-muted-dark">Tingkat berpikir HOT</p>
                                     <p className="mt-3 text-3xl font-bold" style={headingStyle}>
                                         {formatNumber(safeStats.engagement.hotThinkingPercentage, {
                                             minimumFractionDigits: 1,
@@ -978,7 +1002,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                         %
                                     </p>
                                     <p className="mt-2 text-sm leading-6 text-brand-muted-dark">
-                                        Higher-order thinking coverage helps show whether discussions are moving beyond simple exchange into deeper analysis.
+                                        Cakupan berpikir tingkat menunjukkan apakah diskusi bergerak melampaui sekadar tukar menukar ke analisis yang lebih dalam.
                                     </p>
                                 </div>
                             </div>
@@ -994,19 +1018,19 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                             <div className="flex items-start justify-between gap-3">
                                 <div>
                                     <h2 className="text-xl font-semibold" style={headingStyle}>
-                                        Recent activity
+                                        Aktivitas terkini
                                     </h2>
-                                    <p className="mt-2 text-sm text-brand-muted-dark">Latest 10 events from users, courses, discussions, and AI configuration.</p>
+                                    <p className="mt-2 text-sm text-brand-muted-dark">10 peristiwa terakhir dari pengguna, kelas, diskusi, dan konfigurasi AI.</p>
                                 </div>
                                 <a href="/admin/audit-log" className="text-sm font-medium text-brand-primary transition hover:opacity-80">
-                                    View Audit Log
+                                    Lihat Log Audit
                                 </a>
                             </div>
 
                             <div className="mt-6 space-y-4">
                                 {dashboardActivities.length === 0 ? (
                                     <div className="rounded-3xl border border-dashed border-slate-200 bg-white/30 px-5 py-8 text-center text-sm text-brand-muted-dark">
-                                        Activity feed is empty right now. New admin and learning events will appear here.
+                                        Belum ada aktivitas. Peristiwa admin dan pembelajaran terbaru akan muncul di sini.
                                     </div>
                                 ) : (
                                     dashboardActivities.map((activity) => {
@@ -1032,7 +1056,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             <p className="text-sm font-semibold text-brand-dark">
-                                                                {activity.actor?.name ?? 'System'}
+                                                                {activity.actor?.name ?? 'Sistem'}
                                                             </p>
                                                             {activity.actor?.role ? (
                                                                 <span
@@ -1068,7 +1092,7 @@ export default function AdminDashboardPage({ auth, stats, activities = [], usage
                 onClose={() => setIsRangeModalOpen(false)}
                 onApply={() => {
                     if (dateRange.startDate > dateRange.endDate) {
-                        toast.error('Start date must be before end date.');
+                        toast.error('Tanggal mulai harus sebelum tanggal akhir.');
                         return;
                     }
 

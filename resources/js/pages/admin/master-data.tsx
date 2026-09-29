@@ -30,7 +30,7 @@ import { InputError } from '@/components/ui/input-error';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { toast } from '@/components/ui/toaster';
 import { exportToCSV, parseCSV, validateCSVColumns, type CsvRecord } from '@/lib/csv-utils';
-import { connectWebSocket } from '@/lib/websocket';
+import { connectWebSocket, type AdminSocketHandle } from '@/lib/websocket';
 import AppLayout from '@/layouts/app-layout';
 
 interface LecturerOption {
@@ -52,6 +52,10 @@ interface CourseGroup {
     member_count?: number;
     sessionDiscussionCount?: number;
     session_discussion_count?: number;
+    _count?: {
+        members?: number;
+        sessionDiscussions?: number;
+    };
 }
 
 interface CourseItem {
@@ -68,6 +72,10 @@ interface CourseItem {
     studentCount?: number;
     student_count?: number;
     students_count?: number;
+    _count?: {
+        groups?: number;
+        students?: number;
+    };
     groups?: CourseGroup[];
     createdAt?: string;
     created_at?: string;
@@ -116,7 +124,7 @@ interface CourseFormData {
 interface ApiErrorResponse {
     error?: {
         message?: string;
-        details?: string;
+        details?: unknown;
     };
     message?: string;
     errors?: Record<string, string | string[]>;
@@ -145,6 +153,16 @@ function formatDate(date?: string | null) {
 function extractErrorMessage(error: unknown, fallback: string) {
     if (axios.isAxiosError<ApiErrorResponse>(error)) {
         const payload = error.response?.data;
+        const details = payload?.error?.details;
+
+        // Core validation failures carry { field, message } details — prefer the specific message.
+        if (Array.isArray(details)) {
+            for (const item of details) {
+                if (item && typeof item === 'object' && 'message' in item && typeof item.message === 'string') {
+                    return item.message;
+                }
+            }
+        }
 
         if (payload?.error?.message) return payload.error.message;
         if (payload?.message) return payload.message;
@@ -165,14 +183,30 @@ function normalizeErrors(error: unknown): Record<string, string> {
         return {};
     }
 
-    const rawErrors = error.response?.data?.errors;
-    if (!rawErrors) return {};
+    const payload = error.response?.data;
+    const rawErrors = payload?.errors;
 
-    return Object.entries(rawErrors).reduce<Record<string, string>>((acc, [key, value]) => {
-        if (typeof value === 'string') {
-            acc[key] = value;
-        } else if (Array.isArray(value) && value.length > 0) {
-            acc[key] = value[0];
+    if (rawErrors) {
+        return Object.entries(rawErrors).reduce<Record<string, string>>((acc, [key, value]) => {
+            if (typeof value === 'string') {
+                acc[key] = value;
+            } else if (Array.isArray(value) && value.length > 0) {
+                acc[key] = value[0];
+            }
+
+            return acc;
+        }, {});
+    }
+
+    const details = payload?.error?.details;
+
+    if (!Array.isArray(details)) {
+        return {};
+    }
+
+    return details.reduce<Record<string, string>>((acc, item) => {
+        if (item && typeof item === 'object' && 'field' in item && 'message' in item && typeof item.field === 'string' && typeof item.message === 'string') {
+            acc[item.field] = item.message;
         }
 
         return acc;
@@ -188,11 +222,11 @@ function getCourseOwnerId(course: CourseItem) {
 }
 
 function getGroupCount(course: CourseItem) {
-    return course.groupCount ?? course.group_count ?? course.groups_count ?? course.groups?.length ?? 0;
+    return course.groupCount ?? course.group_count ?? course.groups_count ?? course._count?.groups ?? course.groups?.length ?? 0;
 }
 
 function getStudentCount(course: CourseItem) {
-    return course.studentCount ?? course.student_count ?? course.students_count ?? 0;
+    return course.studentCount ?? course.student_count ?? course.students_count ?? course._count?.students ?? 0;
 }
 
 function getCreatedAt(course: CourseItem) {
@@ -393,7 +427,7 @@ export default function AdminMasterDataPage({ courses, pagination, filters, lect
     }, [isArchivedView, limit, ownerFilter, paginationState.page, searchInput]);
 
     useEffect(() => {
-        let socket: WebSocket | null = null;
+        let socket: AdminSocketHandle | null = null;
 
         void connectWebSocket({
             onMessage: (message) => {
@@ -595,9 +629,11 @@ export default function AdminMasterDataPage({ courses, pagination, filters, lect
 
     const openClone = (course: CourseItem) => {
         setSelectedCourse(course);
+        // Core clone schema requires ^[A-Z0-9]+$ max 10 chars.
+        const base = course.code.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 8);
         setCloneForm({
             name: `Copy of ${course.name}`,
-            code: `${course.code}_copy`,
+            code: `${base}C1`,
         });
         setCloneErrors({});
         setShowCloneModal(true);
@@ -848,7 +884,7 @@ export default function AdminMasterDataPage({ courses, pagination, filters, lect
     const handleExportCourses = async () => {
         try {
             const exportResponse = await axios.get('/admin/master-data/export', {
-                params: { limit: 1000, sortBy: 'createdAt', sortOrder: 'desc' },
+                params: { limit: 100, sortBy: 'createdAt', sortOrder: 'desc' },
             });
 
             const payload = exportResponse.data;
@@ -959,18 +995,18 @@ background: 'var(--dm-accent-bg)',
                                     <>
                                         <SecondaryButton onClick={() => void handleExportCourses()} className="px-4 py-2 text-sm">
                                             <Download className="h-4 w-4" />
-                                            Export CSV
+                                            Ekspor CSV
                                         </SecondaryButton>
                                         <SecondaryButton onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm">
                                             <Import className="h-4 w-4" />
-                                            Import CSV
+                                            Impor CSV
                                         </SecondaryButton>
                                     </>
                                 )}
                                 {!isArchivedView && (
                                     <PrimaryButton onClick={() => setShowCreateModal(true)}>
                                         <Plus className="h-4 w-4" />
-                                        Add Course
+                                        Tambah Kelas
                                     </PrimaryButton>
                                 )}
                             </div>
@@ -986,7 +1022,7 @@ background: 'var(--dm-accent-bg)',
                                 className="inline-flex items-center gap-2 rounded-full border border-brand-primary/15 bg-brand-primary/10 px-4 py-2 text-sm font-medium text-brand-primary"
                             >
                                 <BookOpen className="h-4 w-4" />
-                                Active Courses
+                                Kelas Aktif
                             </button>
                             <button
                                 type="button"
@@ -998,7 +1034,7 @@ background: 'var(--dm-accent-bg)',
                                 }`}
                             >
                                 <Archive className="h-4 w-4" />
-                                Archived Courses
+                                Kelas Diarsipkan
                             </button>
                             <button
                                 type="button"
@@ -1006,7 +1042,7 @@ background: 'var(--dm-accent-bg)',
                                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-sm text-gray-600"
                             >
                                 <Users className="h-4 w-4" />
-                                Categories (Phase 2)
+                                Kategori (Phase 2)
                             </button>
                         </div>
 
@@ -1466,7 +1502,7 @@ background: 'var(--dm-accent-bg)',
                         <SecondaryButton onClick={closeCreateModal} className="flex-1">
                             Cancel
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={createProcessing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={createProcessing}>
                             {createProcessing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
@@ -1546,7 +1582,7 @@ background: 'var(--dm-accent-bg)',
                         <SecondaryButton onClick={closeEditModal} className="flex-1">
                             Cancel
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={editProcessing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={editProcessing}>
                             {editProcessing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}
@@ -1743,10 +1779,10 @@ background: 'var(--dm-accent-bg)',
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 text-xs text-slate-600">
                                                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
-                                                        Members: {group.memberCount ?? group.member_count ?? 0}
+                                                        Members: {group.memberCount ?? group.member_count ?? group._count?.members ?? 0}
                                                     </span>
                                                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1">
-                                                        Sesi Diskusi: {group.sessionDiscussionCount ?? group.session_discussion_count ?? 0}
+                                                        Sesi Diskusi: {group.sessionDiscussionCount ?? group.session_discussion_count ?? group._count?.sessionDiscussions ?? 0}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1798,7 +1834,7 @@ background: 'var(--dm-accent-bg)',
                         <SecondaryButton onClick={closeCloneModal} className="flex-1">
                             Cancel
                         </SecondaryButton>
-                        <PrimaryButton className="flex-1" disabled={cloneProcessing}>
+                        <PrimaryButton type="submit" className="flex-1" disabled={cloneProcessing}>
                             {cloneProcessing ? (
                                 <span className="inline-flex items-center gap-2">
                                     {buttonSpinner}

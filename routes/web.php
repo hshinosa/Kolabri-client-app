@@ -154,14 +154,15 @@ Route::middleware('auth.jwt')->group(function () {
             Route::post('/bulk-delete', [UserManagementController::class, 'bulkDelete'])->name('bulk-delete');
             Route::post('/bulk-role-change', [UserManagementController::class, 'bulkRoleChange'])->name('bulk-role-change');
             Route::post('/bulk-import', [UserManagementController::class, 'bulkImport'])->name('bulk-import');
+            Route::get('/export', [UserManagementController::class, 'exportData'])
+                ->middleware('throttle:10,1')
+                ->name('export');
             Route::get('/{id}', [UserManagementController::class, 'show'])->name('show');
             Route::post('/', [UserManagementController::class, 'store'])->name('store');
             Route::put('/{id}', [UserManagementController::class, 'update'])->name('update');
             Route::delete('/{id}', [UserManagementController::class, 'destroy'])->name('destroy');
             Route::post('/{id}/reset-password', [UserManagementController::class, 'resetPassword'])->name('reset-password');
-            Route::get('/export', [UserManagementController::class, 'exportData'])
-                ->middleware('throttle:10,1')
-                ->name('export');
+            Route::post('/{id}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('toggle-status');
         });
 
         Route::prefix('master-data')->name('master-data.')->group(function () {
@@ -187,13 +188,16 @@ Route::middleware('auth.jwt')->group(function () {
 
         Route::prefix('ai-settings')->name('ai-settings.')->group(function () {
             Route::get('/', [AISettingsController::class, 'index'])->name('index');
+            Route::get('/embedding-config', [AISettingsController::class, 'getEmbeddingConfig'])->name('embedding-config.get');
+            Route::put('/embedding-config', [AISettingsController::class, 'updateEmbeddingConfig'])->name('embedding-config.update');
+            Route::put('/fallback-order', [AISettingsController::class, 'updateFallbackOrder'])->name('fallback-order');
+            Route::get('/{provider}/models', [AISettingsController::class, 'getModels'])->name('models');
             Route::get('/{id}', [AISettingsController::class, 'show'])->name('show');
             Route::post('/', [AISettingsController::class, 'store'])->name('store');
             Route::put('/{id}', [AISettingsController::class, 'update'])->name('update');
             Route::delete('/{id}', [AISettingsController::class, 'destroy'])->name('destroy');
             Route::post('/{id}/test', [AISettingsController::class, 'test'])->name('test');
             Route::post('/{id}/activate', [AISettingsController::class, 'activate'])->name('activate');
-            Route::put('/fallback-order', [AISettingsController::class, 'updateFallbackOrder'])->name('fallback-order');
         });
 
         Route::get('/usage-stats', [AISettingsController::class, 'usageStats'])->name('usage-stats');
