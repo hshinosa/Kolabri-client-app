@@ -10,7 +10,7 @@ class ReflectionControllerTest extends TestCase
     private function authenticatedSession(): self
     {
         return $this->withSession([
-            'jwt' => 'test-token',
+            'jwt' => $this->createFakeJwt(['sub' => 'user-1']),
             'user' => [
                 'id' => 'user-1',
                 'name' => 'Test User',

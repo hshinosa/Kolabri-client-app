@@ -10,7 +10,7 @@ class AISettingsControllerTest extends TestCase
     private function authenticatedSession(): self
     {
         return $this->withSession([
-            'jwt' => 'test-token',
+            'jwt' => $this->createFakeJwt(['sub' => 'user-1']),
             'user' => [
                 'id' => 'admin-1',
                 'name' => 'Admin User',

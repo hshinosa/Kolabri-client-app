@@ -10,7 +10,7 @@ class LecturerShellNavigationTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'lecturer-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'user-1']),
                 'user' => [
                     'id' => 'lecturer-1',
                     'name' => 'QA Lecturer',
@@ -32,7 +32,7 @@ class LecturerShellNavigationTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'student-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'user-1']),
                 'user' => [
                     'id' => 'student-1',
                     'name' => 'QA Student',

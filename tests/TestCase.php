@@ -22,6 +22,22 @@ abstract class TestCase extends BaseTestCase
                 $table->timestamp('enrolled_at')->useCurrent();
             });
         }
+
+        // The users table belongs to core-api in production (its migration
+        // skips creation on purpose); tests need a minimal stand-in for
+        // App\Models\User. password is nullable so mass-assignment tests can
+        // assert it stays unset.
+        if (! Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('email')->unique();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password')->nullable();
+                $table->string('remember_token', 100)->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     protected function createFakeJwt(array $payload = []): string
