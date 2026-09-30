@@ -326,7 +326,7 @@ Route::middleware('auth.jwt')->group(function () {
     | Student Routes
     |--------------------------------------------------------------------------
     */
-    Route::middleware('role:student')->prefix('student')->name('student.')->group(function () {
+    Route::middleware(['role:student', 'assert.enrolled'])->prefix('student')->name('student.')->group(function () {
         // Global Search
         Route::get('/search', [StudentGlobalSearchController::class, 'search'])->name('search');
 

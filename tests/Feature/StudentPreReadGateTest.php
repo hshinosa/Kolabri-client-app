@@ -29,6 +29,10 @@ class StudentPreReadGateTest extends TestCase
 
     private function studentSession(): self
     {
+        // The assert.enrolled guard requires a course_students row for the
+        // session user on every course-scoped student route.
+        $this->enrollStudent('11111111-1111-1111-1111-111111111111', 'course-1');
+
         return $this->withSession($this->studentSessionData('11111111-1111-1111-1111-111111111111'));
     }
 

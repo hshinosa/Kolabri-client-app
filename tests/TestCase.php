@@ -2,10 +2,28 @@
 
 namespace Tests;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Schema;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Feature tests without RefreshDatabase boot an empty sqlite; the
+        // assert.enrolled guard queries course_students either way.
+        if (! Schema::hasTable('course_students')) {
+            Schema::create('course_students', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->string('course_id')->index();
+                $table->string('user_id')->index();
+                $table->timestamp('enrolled_at')->useCurrent();
+            });
+        }
+    }
+
     protected function createFakeJwt(array $payload = []): string
     {
         $header = base64_encode(json_encode(['alg' => 'none', 'typ' => 'JWT']));
@@ -31,5 +49,19 @@ abstract class TestCase extends BaseTestCase
                 'role' => 'student',
             ],
         ];
+    }
+
+    /**
+     * Seed a course_students row so the assert.enrolled middleware lets the
+     * session user into course-scoped student routes.
+     */
+    protected function enrollStudent(string $userId, string $courseId): void
+    {
+        \App\Models\CourseStudent::create([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'course_id' => $courseId,
+            'user_id' => $userId,
+            'enrolled_at' => now(),
+        ]);
     }
 }

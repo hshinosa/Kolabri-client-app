@@ -23,7 +23,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Admin', 'email' => 'a@test.com', 'role' => 'admin'],
             ])
             ->get('/admin/dashboard');
@@ -35,7 +35,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Student', 'email' => 's@test.com', 'role' => 'student'],
             ])
             ->get('/admin/dashboard');
@@ -47,7 +47,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Student', 'email' => 's@test.com', 'role' => 'student'],
             ])
             ->getJson('/admin/dashboard');
@@ -59,7 +59,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Lecturer', 'email' => 'l@test.com', 'role' => 'lecturer'],
             ])
             ->get('/admin/dashboard');
@@ -71,7 +71,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Student', 'email' => 's@test.com', 'role' => 'student'],
             ])
             ->get('/login');
@@ -83,7 +83,7 @@ class MiddlewareTest extends TestCase
     {
         $response = $this
             ->withSession([
-                'jwt' => 'valid-token',
+                'jwt' => $this->createFakeJwt(['sub' => 'u1']),
                 'user' => ['id' => 'u1', 'name' => 'Lecturer', 'email' => 'l@test.com', 'role' => 'lecturer'],
             ])
             ->get('/login');

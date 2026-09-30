@@ -47,6 +47,8 @@ class GroupControllerTest extends TestCase
 
     public function test_student_groups_index_redirects_to_unified_course_detail(): void
     {
+        $this->enrollStudent('user-1', 'course-1');
+
         $response = $this->authenticatedSession('student')->get(route('student.groups.index', 'course-1'));
 
         $response->assertRedirect(route('student.courses.show', 'course-1'));

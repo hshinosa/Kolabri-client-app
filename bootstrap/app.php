@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureEnrolledInCourse;
 use App\Http\Middleware\GuestMiddleware;
 use App\Http\Middleware\AssertChatMembership;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'assert.chat.membership' => AssertChatMembership::class,
+            'assert.enrolled' => EnsureEnrolledInCourse::class,
             'auth.jwt' => JwtAuthMiddleware::class,
             'role' => RoleMiddleware::class,
             'guest' => GuestMiddleware::class,

@@ -46,6 +46,8 @@ class StudentAttendanceControllerTest extends TestCase
             'marked_at' => now(),
         ]);
 
+        $this->enrollStudent('student-1', 'course-1');
+
         $response = $this
             ->withSession($this->studentSessionData('student-1'))
             ->get(route('student.courses.attendance', 'course-1'));

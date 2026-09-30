@@ -9,8 +9,11 @@ class GoalControllerTest extends TestCase
 {
     private function authenticatedSession(string $role = 'student'): self
     {
+        // assert.enrolled guard requires a course_students row for course-scoped routes.
+        $this->enrollStudent('user-1', 'course-1');
+
         return $this->withSession([
-            'jwt' => 'test-token',
+            'jwt' => $this->createFakeJwt(['sub' => 'user-1']),
             'user' => [
                 'id' => 'user-1',
                 'name' => 'Test User',
@@ -67,7 +70,7 @@ class GoalControllerTest extends TestCase
             'sessionDiscussion' => 'chat-1',
         ]));
 
-        $response->assertRedirect(route('student.courses.session-discussions', ['course' => 'course-1']));
+        $response->assertRedirect(route('student.courses.show', 'course-1'));
         $response->assertSessionHas('info', 'Goal sudah ditetapkan oleh anggota grup lain. Silakan masuk ke sesi diskusi.');
     }
 
