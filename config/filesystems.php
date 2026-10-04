@@ -41,7 +41,19 @@ return [
         'private' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'visibility' => 'private',
+            // Files must stay readable by the Core API container (separate uid) so it can
+            // stream them to the AI Engine for ingestion. Mode 0600 is too strict here;
+            // the directory itself is not web-exposed.
+            'permissions' => [
+                'file' => [
+                    'public' => 0664,
+                    'private' => 0664,
+                ],
+                'dir' => [
+                    'public' => 0775,
+                    'private' => 0775,
+                ],
+            ],
             'throw' => false,
             'report' => false,
         ],
