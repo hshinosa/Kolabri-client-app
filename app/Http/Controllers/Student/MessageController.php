@@ -19,7 +19,11 @@ class MessageController extends Controller
             'version' => 'sometimes|integer|min:0',
         ]);
 
-        $userId = $request->user()->id;
+        $authUser = $this->resolveAuthUser($request);
+        if ($authUser === null) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $userId = (string) $authUser['id'];
         $conversationId = $validated['conversation_id'];
         $newContent = $validated['content'];
         $oldContent = $validated['old_content'];
@@ -100,7 +104,11 @@ class MessageController extends Controller
             'content' => 'required|string',
         ]);
 
-        $userId = $request->user()->id;
+        $authUser = $this->resolveAuthUser($request);
+        if ($authUser === null) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $userId = (string) $authUser['id'];
         $conversationId = $validated['conversation_id'];
         $content = $validated['content'];
 
@@ -117,7 +125,7 @@ class MessageController extends Controller
         }
 
         $isOwner = !$lastAction || $lastAction->user_id === $userId;
-        $isModerator = in_array($request->user()->role ?? '', ['moderator', 'admin', 'teacher']);
+        $isModerator = in_array((string) ($authUser['role'] ?? ''), ['moderator', 'admin', 'teacher'], true);
 
         if (!$isOwner && !$isModerator) {
             return response()->json([
@@ -167,5 +175,18 @@ class MessageController extends Controller
             'success' => true,
             'data' => $audits,
         ]);
+    }
+
+    /**
+     * The auth.jwt middleware exposes the authenticated session user as request
+     * input 'auth_user'; it never populates Laravel's auth guard, so
+     * $request->user() is null on these routes. Resolve the session user
+     * explicitly and reject with401 when it is missing.
+     */
+    private function resolveAuthUser(Request $request): ?array
+    {
+        $user = $request->input('auth_user') ?? session('user');
+
+        return is_array($user) && isset($user['id']) ? $user : null;
     }
 }

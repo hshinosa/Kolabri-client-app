@@ -20,11 +20,14 @@ class PinnedMessageController extends Controller
             'sender_name' => 'required|string',
         ]);
 
-        $userId = $request->user()->id;
+        $authUser = $this->resolveAuthUser($request);
+        if ($authUser === null) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $userId = (string) $authUser['id'];
         $conversationId = $validated['conversation_id'];
 
-        $user = $request->user();
-        $isModerator = in_array($user->role ?? '', ['moderator', 'admin', 'teacher']);
+        $isModerator = in_array((string) ($authUser['role'] ?? ''), ['moderator', 'admin', 'teacher'], true);
 
         if (!$isModerator) {
             return response()->json([
@@ -81,7 +84,11 @@ class PinnedMessageController extends Controller
         ]);
 
         $conversationId = $validated['conversation_id'];
-        $userId = $request->user()->id;
+        $authUser = $this->resolveAuthUser($request);
+        if ($authUser === null) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $userId = (string) $authUser['id'];
 
         $pinned = PinnedMessage::where('message_id', $messageId)
             ->where('conversation_id', $conversationId)
@@ -123,4 +130,17 @@ class PinnedMessageController extends Controller
             'data' => $pinned,
         ]);
     }
+
+
+    /**
+     * auth.jwt exposes the session user as request input 'auth_user' and never
+     * populates Laravel's auth guard, so $request->user() is null here.
+     */
+    private function resolveAuthUser(Request $request): ?array
+    {
+        $user = $request->input('auth_user') ?? session('user');
+
+        return is_array($user) && isset($user['id']) ? $user : null;
+    }
+
 }
