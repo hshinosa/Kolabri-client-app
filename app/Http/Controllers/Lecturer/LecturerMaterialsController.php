@@ -38,6 +38,18 @@ class LecturerMaterialsController extends Controller
     // - Read paths (destroy, reindex, streaming) check 'private' first, fall back to 'public'.
     // - Chat attachments stay on 'public' (see ChatUploadController).
     /**
+     * Daftar materi kelas (route GET materials sebelumnya 500: method ini tidak ada).
+     */
+    public function index(string $course): JsonResponse
+    {
+        $materials = CourseMaterial::where('course_id', $course)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['data' => $materials]);
+    }
+
+    /**
      * Upload a material.
      */
     public function store(Request $request, string $course): JsonResponse
