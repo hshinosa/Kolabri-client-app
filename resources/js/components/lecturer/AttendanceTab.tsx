@@ -278,6 +278,19 @@ export default function AttendanceTab({ courseId }: AttendanceTabProps) {
                 </div>
             )}
 
+            {/* F11: aturan kehadiran otomatis dikomunikasikan (sebelumnya tidak terlihat oleh dosen) */}
+            {viewMode === 'sessions' && (
+                <div
+                    className="rounded-lg px-4 py-3 text-xs leading-relaxed"
+                    style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: '#92400e' }}
+                >
+                    <b>Catatan kehadiran otomatis:</b> sistem menandai mahasiswa <b>hadir</b> bila selama sesi ia mengirim{' '}
+                    <b>minimal 3 pesan</b> dan <b>minimal 1 pesan bernilai HOT</b> (Higher-Order Thinking). Sesi singkat dengan
+                    kontribusi di bawah 3 pesan akan tercatat <i>tidak hadir</i> — buka <b>Lihat Detail</b> untuk mengoreksi
+                    secara manual.
+                </div>
+            )}
+
             {/* Sessions View */}
             {viewMode === 'sessions' && (
                 <>

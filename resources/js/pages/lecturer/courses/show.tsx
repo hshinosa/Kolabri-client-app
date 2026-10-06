@@ -10,6 +10,7 @@ import { InputError } from '@/components/ui/input-error';
 import CourseDetailTabs, { TabId } from '@/components/lecturer/CourseDetailTabs';
 import AktivitasTab from '@/components/lecturer/AktivitasTab';
 import AttendanceTab from '@/components/lecturer/AttendanceTab';
+import SessionsTab from '@/components/lecturer/SessionsTab';
 import UnifiedMaterialsTab from '@/components/lecturer/UnifiedMaterialsTab';
 import AppLayout from '@/layouts/app-layout';
 import lecturer from '@/routes/lecturer';
@@ -263,6 +264,12 @@ export default function ShowCourse({ course }: Props) {
                     {activeTab === 'aktivitas' && (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
                             <AktivitasTab students={activityData} summary={activitySummary} loading={activityLoading} />
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'sesi' && (
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+                            <SessionsTab courseId={course.id} />
                         </motion.div>
                     )}
 

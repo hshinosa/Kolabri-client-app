@@ -659,7 +659,10 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
     const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
     const [toastMessage, setToastMessage] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
     const [initialSummary, setInitialSummary] = useState<import('@/features/chat/summary/types').ChatDiscussionSummary | null>(null);
-    const [isSummaryVisible, setIsSummaryVisible] = useState(false);
+    // F4 fix: sesi yang sudah ditutup harus langsung memuat ringkasan saat halaman
+    // dibuka segar — sebelumnya default false dan hanya di-set true pada alur tutup
+    // sesi dalam halaman yang sama, sehingga muat ulang tidak pernah fetch /summary.
+    const [isSummaryVisible, setIsSummaryVisible] = useState(!!sessionDiscussion.isClosed);
 
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [isEditingSaving, setIsEditingSaving] = useState(false);

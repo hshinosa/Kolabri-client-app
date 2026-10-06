@@ -39,6 +39,7 @@ use App\Http\Controllers\Lecturer\LecturerAktivitasController;
 use App\Http\Controllers\Lecturer\LecturerAttendanceController;
 use App\Http\Controllers\Lecturer\LecturerCourseWeeksController;
 use App\Http\Controllers\Lecturer\LecturerMaterialsController;
+use App\Http\Controllers\Lecturer\LecturerSessionInsightController;
 use App\Http\Controllers\Lecturer\GlobalSearchController as LecturerGlobalSearchController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -278,6 +279,12 @@ Route::middleware('auth.jwt')->group(function () {
             ->name('courses.attendance.export');
         Route::post('/courses/{course}/attendance/close-single', [LecturerAttendanceController::class, 'closeSingle'])
             ->name('courses.attendance.close-single');
+
+        // Sesi diskusi — ringkasan AI + analisis per sesi (tab "Sesi & Analisis")
+        Route::get('/courses/{course}/sessions', [LecturerSessionInsightController::class, 'index'])
+            ->name('courses.sessions.index');
+        Route::get('/courses/{course}/sessions/{sessionDiscussion}/detail', [LecturerSessionInsightController::class, 'detail'])
+            ->name('courses.sessions.detail');
 
         Route::get('/courses/{course}/materials-hub', [\App\Http\Controllers\Lecturer\LecturerMaterialsHubController::class, 'show'])
             ->name('courses.materials-hub.show');

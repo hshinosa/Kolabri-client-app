@@ -1,7 +1,8 @@
-import { BarChart3, BookOpen, CalendarCheck } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck, MessagesSquare } from 'lucide-react';
 
 const tabs = [
     { id: 'aktivitas', label: 'Aktivitas', icon: BarChart3 },
+    { id: 'sesi', label: 'Sesi & Analisis', icon: MessagesSquare },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'materi', label: 'Materi', icon: BookOpen },
 ] as const;
