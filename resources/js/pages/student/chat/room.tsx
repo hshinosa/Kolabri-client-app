@@ -1690,7 +1690,7 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
             });
 
             if (response.data.success) {
-                emitEditMessage(editingMessageId, newContent, response.data.data.edited_at);
+                emitEditMessage(editingMessageId, newContent);
 
                 setMessages((prev) =>
                     prev.map((msg) =>

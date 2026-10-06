@@ -10,6 +10,7 @@ export function mapSocketToDisplayMessage(msg: ChatSocketMessage): ChatDisplayMe
         sender_name: msg.senderName,
         content: msg.content,
         created_at: msg.createdAt,
+        edited_at: msg.editedAt ?? null,
         is_intervention: msg.isIntervention,
         reply_to: msg.replyTo,
         attachments: msg.attachments,

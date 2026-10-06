@@ -53,7 +53,7 @@ interface UseSocketRoomReturn {
     showQualityFeedback: boolean;
     hasMoreMessages: boolean;
     loadMoreMessages: (sessionDiscussionId: string, beforeMessageId: string) => void;
-    emitEditMessage: (messageId: string, content: string, oldContent: string) => void;
+    emitEditMessage: (messageId: string, content: string) => void;
     emitDeleteMessage: (messageId: string) => void;
     emitPinMessage: (messageId: string, content: string, senderName: string) => void;
     emitUnpinMessage: (messageId: string) => void;
@@ -359,11 +359,12 @@ export function useSocketRoom({
         });
     }, []);
 
-    const emitEditMessage = useCallback((messageId: string, content: string, oldContent: string) => {
+    const emitEditMessage = useCallback((messageId: string, content: string) => {
         socketRef.current?.emit('edit_message', {
             messageId,
             content,
-            oldContent,
+            // The server accepts either spelling; `roomId` matches send_message.
+            roomId: sessionDiscussionId,
             sessionDiscussionId,
         });
     }, [sessionDiscussionId]);
@@ -371,6 +372,9 @@ export function useSocketRoom({
     const emitDeleteMessage = useCallback((messageId: string) => {
         socketRef.current?.emit('delete_message', {
             messageId,
+            // The server's deleteMessageSchema is keyed on `roomId`; sending only
+            // `sessionDiscussionId` made the payload fail validation silently.
+            roomId: sessionDiscussionId,
             sessionDiscussionId,
         });
     }, [sessionDiscussionId]);
