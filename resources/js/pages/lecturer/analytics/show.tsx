@@ -56,6 +56,14 @@ interface QualityBreakdown {
     participation?: number;
 }
 
+interface SrlDistributionData {
+    distribution: { forethought: number; performance: number; reflection: number };
+    total: number;
+    avgConfidence: number | null;
+    subPhases?: Record<string, number>;
+    recent?: Array<{ phase: string | null; subPhase: string | null; confidence: number | null; at: string; text: string }>;
+}
+
 interface GroupAnalyticsData {
     qualityScore?: number;
     recommendation?: string;
@@ -63,6 +71,8 @@ interface GroupAnalyticsData {
     qualityBreakdown?: QualityBreakdown;
     hotPercentage?: number;
     local_message_count?: number;
+    /** Distribusi fase SRL Zimmerman asli (dari classifier ai-engine) */
+    srl?: SrlDistributionData | null;
 }
 
 interface RecentActivity {
@@ -289,7 +299,7 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
 
         const hot = Math.min(10, hotPercentage / 10);
         const lexical = Math.min(10, lexicalVariety / 10);
-        const performance = qualityScore !== null ? qualityScore / 10 : 0;
+        const performanceProxy = qualityScore !== null ? qualityScore / 10 : 0;
         const cognitiveSignal = totalEngagement > 0 ? (cognitive / totalEngagement) * 10 : 0;
         const collaboration = Math.min(10, engagementSignal);
         const reflectionProxy = qualityScore !== null
@@ -297,13 +307,23 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
             : 0;
         const forethoughtProxy = Math.min(10, cognitiveSignal);
 
+        // Sumbu Forethought/Performance/Reflection memakai distribusi fase SRL
+        // Zimmerman ASLI (klasifikasi ai-engine per pesan) bila tersedia;
+        // kalau belum ada data, jatuh kembali ke proxy lama (engagement/quality).
+        const srl = safeAnalytics.srl;
+        const useSrl = !!srl && srl.total > 0;
+        const srlShare = (n: number) => Math.min(10, (n / (srl!.total || 1)) * 10);
+        const forethoughtAxis = useSrl ? srlShare(srl!.distribution.forethought) : forethoughtProxy;
+        const performanceAxis = useSrl ? srlShare(srl!.distribution.performance) : performanceProxy;
+        const reflectionAxis = useSrl ? srlShare(srl!.distribution.reflection) : reflectionProxy;
+
         return [
             Number(hot.toFixed(1)),
             Number(lexical.toFixed(1)),
-            Number(forethoughtProxy.toFixed(1)),
-            Number(performance.toFixed(1)),
+            Number(forethoughtAxis.toFixed(1)),
+            Number(performanceAxis.toFixed(1)),
             Number(collaboration.toFixed(1)),
-            Number(reflectionProxy.toFixed(1)),
+            Number(reflectionAxis.toFixed(1)),
         ];
     }, [safeAnalytics, hotPercentage, lexicalVariety]);
 
@@ -753,6 +773,16 @@ export default function GroupAnalyticsDetail({ course, group, analytics, members
                                                 labels={RADAR_METRIC_LABELS}
                                                 primaryLabel={group.name}
                                             />
+                                            {safeAnalytics.srl && safeAnalytics.srl.total > 0 && (
+                                                <p className="mt-1 text-center text-xs text-brand-muted-dark">
+                                                    Fase SRL Zimmerman dari {safeAnalytics.srl.total} pesan — Forethought{' '}
+                                                    {safeAnalytics.srl.distribution.forethought} · Performance{' '}
+                                                    {safeAnalytics.srl.distribution.performance} · Reflection{' '}
+                                                    {safeAnalytics.srl.distribution.reflection}
+                                                    {safeAnalytics.srl.avgConfidence != null &&
+                                                        ` · keyakinan rata-rata ${Math.round(safeAnalytics.srl.avgConfidence * 100)}%`}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="rounded-2xl border border-brand-primary/10 bg-white/90 p-2 sm:p-4">

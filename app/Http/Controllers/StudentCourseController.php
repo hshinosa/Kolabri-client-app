@@ -385,7 +385,8 @@ class StudentCourseController extends Controller
 
     public function closeSession(string $course, string $sessionDiscussion)
     {
-        $response = $this->apiRequest()->post($this->apiUrl() . "/api/session-discussions/{$sessionDiscussion}/close");
+        // 30s: endpoint close memicu ringkasan LLM yang bisa >10s default.
+        $response = $this->apiRequest(30)->post($this->apiUrl() . "/api/session-discussions/{$sessionDiscussion}/close");
         return $this->proxyResponse($response);
     }
 

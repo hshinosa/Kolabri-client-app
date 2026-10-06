@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, FileText, MessagesSquare, Sparkles, Target, TrendingUp, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MessagesSquare, Sigma, Sparkles, Target, TrendingUp, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { LiquidGlassCard } from '@/components/Welcome/utils/helpers';
@@ -42,8 +42,16 @@ interface SessionAnalytics {
     timeline?: Array<{ senderName?: string; content?: string; createdAt?: string; senderType?: string }>;
 }
 
+interface SrlDistribution {
+    distribution: { forethought: number; performance: number; reflection: number };
+    total: number;
+    avgConfidence: number | null;
+    subPhases?: Record<string, number>;
+    recent?: Array<{ phase: string | null; subPhase: string | null; confidence: number | null; at: string; text: string }>;
+}
+
 interface SessionDetail {
-    analytics: SessionAnalytics;
+    analytics: SessionAnalytics & { srl?: SrlDistribution | null };
     summary: string | null;
     summary_generated_at: string | null;
 }
@@ -288,6 +296,43 @@ export default function SessionsTab({ courseId }: { courseId: string }) {
                                                         </ul>
                                                     </div>
                                                 </div>
+
+                                                {/* Distribusi fase SRL Zimmerman (hasil classifier ai-engine) */}
+                                                {detail.analytics.srl && detail.analytics.srl.total > 0 && (
+                                                    <div className="rounded-xl p-3" style={{ background: 'rgba(136,22,28,0.05)' }}>
+                                                        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#88161c' }}>
+                                                            <Sigma className="h-3.5 w-3.5" /> Fase SRL Zimmerman
+                                                            <span className="font-normal" style={{ color: '#6B7280' }}>
+                                                                · {detail.analytics.srl.total} pesan terklasifikasi
+                                                                {detail.analytics.srl.avgConfidence != null &&
+                                                                    ` · keyakinan rata-rata ${Math.round(detail.analytics.srl.avgConfidence * 100)}%`}
+                                                            </span>
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2 text-xs">
+                                                            {(
+                                                                [
+                                                                    ['Forethought', detail.analytics.srl.distribution.forethought, 'rgba(59,130,246,0.12)', '#1d4ed8'],
+                                                                    ['Performance', detail.analytics.srl.distribution.performance, 'rgba(34,197,94,0.12)', '#166534'],
+                                                                    ['Reflection', detail.analytics.srl.distribution.reflection, 'rgba(245,158,11,0.14)', '#b45309'],
+                                                                ] as const
+                                                            ).map(([label, count, bg, color]) => (
+                                                                <span key={label} className="rounded-full px-3 py-1 font-medium" style={{ background: bg, color }}>
+                                                                    {label}: {count} ({Math.round((count / detail.analytics.srl!.total) * 100)}%)
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        {detail.analytics.srl.recent && detail.analytics.srl.recent.length > 0 && (
+                                                            <ul className="mt-2 space-y-1 text-xs" style={{ color: '#6B7280' }}>
+                                                                {detail.analytics.srl.recent.map((r, i) => (
+                                                                    <li key={i}>
+                                                                        <b style={{ color: '#4A4A4A' }}>{r.phase}</b>
+                                                                        {r.subPhase ? `/${r.subPhase}` : ''} — "{r.text}"
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* Kontribusi per mahasiswa */}
                                                 {detail.analytics.participantStats &&
