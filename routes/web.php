@@ -355,8 +355,7 @@ Route::middleware('auth.jwt')->group(function () {
         // Group Detail Page
         Route::get('/groups/{group}', [GroupController::class, 'showStudent'])->name('groups.show');
 
-        // Group Members
-        Route::patch('/groups/{group}/members/{member}', [GroupMemberManagementController::class, 'updateRole'])->name('groups.members.update-role');
+        // Group Members (role anggota dihapus: sistem hanya punya ketua=creator & anggota)
         Route::delete('/groups/{group}/members/{member}', [GroupMemberManagementController::class, 'destroy'])->name('groups.members.destroy');
 
 
