@@ -27,14 +27,9 @@ class PinnedMessageController extends Controller
         $userId = (string) $authUser['id'];
         $conversationId = $validated['conversation_id'];
 
-        $isModerator = in_array((string) ($authUser['role'] ?? ''), ['moderator', 'admin', 'teacher'], true);
-
-        if (!$isModerator) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Hanya moderator yang dapat menyematkan pesan',
-            ], 403);
-        }
+        // Semua anggota yang terautentikasi (termasuk mahasiswa) boleh menyematkan
+        // pesan — konsisten dengan destroy() yang tidak membatasi role apa pun.
+        // Batas maksimal tetap berlaku.
 
         $currentPinCount = PinnedMessage::forConversation($conversationId)->count();
         if ($currentPinCount >= self::MAX_PINS_PER_ROOM) {

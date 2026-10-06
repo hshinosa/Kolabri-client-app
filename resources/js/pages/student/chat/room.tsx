@@ -228,6 +228,8 @@ interface MessageItemProps {
     onUnpin: (messageId: string) => void;
     onCopy: (content: string) => void;
     canPin: boolean;
+    /** Hapus pesan orang lain: tetap khusus moderator/dosen (F6 hanya membuka pin untuk mahasiswa) */
+    canDeleteOthers: boolean;
     isPinned: boolean;
     isEditing: boolean;
     editingContent: string;
@@ -254,6 +256,7 @@ const MessageItem = memo(function MessageItem({
     onUnpin,
     onCopy,
     canPin,
+    canDeleteOthers,
     isPinned,
     isEditing,
     editingContent,
@@ -440,6 +443,7 @@ const MessageItem = memo(function MessageItem({
                                 isDeleted={isDeleted}
                                 isPinned={isPinned}
                                 canPin={canPin}
+                                canDeleteOthers={canDeleteOthers}
                                 canEdit={canEdit && !isDeleted}
                                 onEdit={() => onEdit(message.id)}
                                 onDelete={() => onDelete(message.id)}
@@ -1951,12 +1955,12 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
 
                     <div className="relative">
 <PinnedMessages
-                        pinnedMessages={pinnedMessages}
-                        onUnpin={handleUnpin}
-                        onMessageClick={scrollToSearchResult}
-                        canPin={auth.user?.role !== 'student'}
-                        canUnpin={auth.user?.role !== 'student'}
-                    />
+    pinnedMessages={pinnedMessages}
+    onUnpin={handleUnpin}
+    onMessageClick={scrollToSearchResult}
+    canPin={true}
+    canUnpin={true}
+/>
 
                         <AnimatePresence>
                             {localSearchActive && (
@@ -2171,7 +2175,8 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
                                                 const isPinnedMsg = pinnedMessages.some((p) => p.message_id === message.id);
                                                 const editTimeLimit = new Date(message.created_at).getTime() > Date.now() - 24 * 60 * 60 * 1000;
                                                 const userRole = auth.user?.role;
-                                                const canPinMessages = userRole !== 'student';
+                                                // F6: semua role (termasuk mahasiswa) boleh menyematkan pesan
+                                                const canPinMessages = true;
 
                                                 return (
                                                     <MessageItem
@@ -2191,6 +2196,7 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
                                                         onUnpin={handleUnpin}
                                                         onCopy={handleCopyMessage}
                                                         canPin={canPinMessages}
+                                                        canDeleteOthers={userRole !== 'student'}
                                                         isPinned={isPinnedMsg}
                                                         isEditing={editingMessageId === message.id}
                                                         editingContent={message.content}

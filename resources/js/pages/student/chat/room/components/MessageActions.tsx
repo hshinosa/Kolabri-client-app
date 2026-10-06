@@ -8,6 +8,7 @@ interface MessageActionsProps {
     isDeleted: boolean;
     isPinned: boolean;
     canPin: boolean;
+    canDeleteOthers: boolean;
     canEdit: boolean;
     onEdit: () => void;
     onDelete: () => void;
@@ -22,6 +23,7 @@ export function MessageActions({
     isDeleted,
     isPinned,
     canPin,
+    canDeleteOthers,
     canEdit,
     onEdit,
     onDelete,
@@ -68,7 +70,8 @@ export function MessageActions({
     if (isDeleted) return null;
 
     const showEdit = isOwn && canEdit;
-    const showDelete = isOwn || canPin;
+    // Hapus pesan orang lain tetap moderator/dosen; pin kini terbuka untuk semua (F6)
+    const showDelete = isOwn || canDeleteOthers;
     const showPin = canPin;
 
     return (
