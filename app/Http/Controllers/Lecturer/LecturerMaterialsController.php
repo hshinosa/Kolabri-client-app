@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Lecturer;
 use App\Http\Controllers\Controller;
 use App\Models\CourseMaterial;
 use App\Models\MaterialView;
+use App\Services\CoreApiFilePath;
 use App\Services\CoreApiInternalClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,17 +21,7 @@ class LecturerMaterialsController extends Controller
 
     private function resolveCoreApiFilePath(string $relativePath, string $disk): string
     {
-        $relativePath = ltrim($relativePath, '/');
-
-        if ($disk === 'private' && is_dir('/shared-storage-private')) {
-            return '/shared-storage-private/' . $relativePath;
-        }
-
-        if ($disk === 'public' && is_dir('/shared-storage')) {
-            return '/shared-storage/' . $relativePath;
-        }
-
-        return Storage::disk($disk)->path($relativePath);
+        return CoreApiFilePath::resolve($relativePath, $disk);
     }
     // STORAGE MIGRATION STRATEGY (H3 file-upload hardening):
     // - NEW uploads go to the 'private' disk (not web-accessible).

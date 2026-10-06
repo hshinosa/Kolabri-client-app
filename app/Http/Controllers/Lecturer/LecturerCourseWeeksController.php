@@ -7,6 +7,7 @@ use App\Models\CourseMaterial;
 use App\Models\CourseWeek;
 use App\Models\CourseWeekMaterial;
 use App\Services\CoreApiInternalClient;
+use App\Services\CoreApiFilePath;
 use App\Services\CourseWeekIndexService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -143,9 +144,10 @@ class LecturerCourseWeeksController extends Controller
             'sort_order' => $validated['sort_order'] ?? ($maxSort + 1),
         ]);
 
-        $disk = Storage::disk('private')->exists($material->file_path) ? 'private'
-              : (Storage::disk('public')->exists($material->file_path) ? 'public' : 'local');
-        $absolutePath = Storage::disk($disk)->path($material->file_path);
+        // Path harus di-resolve untuk core-api (shared volume) — Storage::disk()->path()
+        // menghasilkan path container Laravel yang tidak terbaca core-api, sehingga
+        // re-ingest dengan metadata week_index tidak pernah terjadi (bug E2E 2026-10-06).
+        $absolutePath = CoreApiFilePath::resolve($material->file_path);
         $this->coreApiInternal->linkCourseMaterial([
             'course_id' => $course,
             'course_material_id' => $material->id,
