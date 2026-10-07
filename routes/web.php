@@ -305,6 +305,11 @@ Route::middleware('auth.jwt')->group(function () {
         Route::get('/courses/{course}/materials/{materialId}/stats', [LecturerMaterialsController::class, 'viewStats'])
             ->name('courses.materials.stats');
 
+    });
+
+    // Course weeks — khusus dosen ATAU admin (cabang "admin passes" pada
+    // assertCourseOwnership kini terjangkau; F6 fix).
+    Route::middleware('role:lecturer,admin')->prefix('lecturer')->name('lecturer.')->group(function () {
         // Course weeks (official syllabus weeks)
         Route::get('/courses/{course}/weeks', [LecturerCourseWeeksController::class, 'index'])
             ->name('courses.weeks.index');
@@ -322,7 +327,6 @@ Route::middleware('auth.jwt')->group(function () {
             ->name('courses.weeks.materials.unassign');
         Route::post('/courses/{course}/weeks/{weekId}/materials/reorder', [LecturerCourseWeeksController::class, 'reorderWeekMaterials'])
             ->name('courses.weeks.materials.reorder');
-
     });
 
     // Public shared report access (no auth required)

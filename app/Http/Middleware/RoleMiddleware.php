@@ -12,11 +12,12 @@ class RoleMiddleware
      * Handle an incoming request.
      * Checks if user has required role.
      */
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = session('user');
 
-        if (!$user || $user['role'] !== $role) {
+        // Mendukung beberapa peran: middleware('role:lecturer,admin')
+        if (!$user || !in_array($user['role'], $roles, true)) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Forbidden'], 403);
             }
