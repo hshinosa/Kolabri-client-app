@@ -18,41 +18,16 @@ class ForgotPasswordController extends Controller
 
     public function sendResetLink(Request $request)
     {
-        $validated = $request->validate([
+        // M2: feature is intentionally disabled (no mailer wired in core-api).
+        // Return a generic message and never proxy to core-api, so internal
+        // errors such as "No token provided" can no longer leak to the user.
+        $request->validate([
             'email' => 'required|email',
         ]);
 
-        try {
-            $response = $this->coreApiRequest()->post(
-                $this->apiUrl() . '/api/auth/forgot-password',
-                ['email' => $validated['email']]
-            );
-
-            if ($response->successful()) {
-                return back()->with('success', 'Tautan reset sandi telah dikirim ke email Anda.');
-            }
-
-            // Even if email not found, show success to prevent email enumeration
-            if ($response->status() === 404) {
-                return back()->with('success', 'Jika email terdaftar, tautan reset sandi akan dikirim.');
-            }
-
-            return back()->withErrors([
-                'email' => $response->json('error.message', 'Gagal mengirim tautan reset sandi.'),
-            ]);
-        } catch (ConnectionException $e) {
-            Log::error('Forgot password failed', ['error' => $e->getMessage()]);
-
-            return back()->withErrors([
-                'email' => 'Tidak dapat terhubung ke layanan autentikasi. Silakan coba lagi.',
-            ]);
-        } catch (RequestException $e) {
-            Log::error('Forgot password failed', ['error' => $e->getMessage()]);
-
-            return back()->withErrors([
-                'email' => 'Tidak dapat terhubung ke layanan autentikasi. Silakan coba lagi.',
-            ]);
-        }
+        return back()->withErrors([
+            'email' => 'Fitur reset password belum tersedia. Silakan hubungi pengelola.',
+        ]);
     }
 
     public function showResetPassword(Request $request): Response

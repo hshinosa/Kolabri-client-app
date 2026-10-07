@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Course;
 use App\Models\CourseMaterial;
 use App\Models\CourseWeek;
 use Illuminate\Database\Schema\Blueprint;
@@ -23,6 +24,18 @@ class LecturerCourseWeeksApiTest extends TestCase
 
     private function createSchema(): void
     {
+        // M7: the ownership guard reads courses.owner_id — the weeks schema
+        // needs a stand-in for that table.
+        Schema::dropIfExists('courses');
+        Schema::create('courses', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('code')->nullable();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->uuid('owner_id')->index();
+            $table->timestamps();
+        });
+
         Schema::dropIfExists('user_avatars');
         Schema::create('user_avatars', function (Blueprint $table) {
             $table->id();
@@ -40,6 +53,13 @@ class LecturerCourseWeeksApiTest extends TestCase
         Schema::dropIfExists('course_week_materials');
         Schema::dropIfExists('course_materials');
         Schema::dropIfExists('course_weeks');
+
+        Course::create([
+            'id' => $this->courseId,
+            'code' => 'IF203',
+            'name' => 'Pemrograman Web',
+            'owner_id' => 'lec-1',
+        ]);
 
         Schema::create('course_weeks', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -136,6 +156,42 @@ class LecturerCourseWeeksApiTest extends TestCase
             ]);
 
         $response->assertForbidden();
+    }
+
+    public function test_other_lecturer_cannot_read_or_write_weeks_of_a_foreign_course(): void
+    {
+        $foreignLecturer = [
+            'jwt' => $this->createFakeJwt(['sub' => 'lec-2']),
+            'user' => [
+                'id' => 'lec-2',
+                'name' => 'Dosen Lain',
+                'email' => 'lec2@test.com',
+                'role' => 'lecturer',
+            ],
+        ];
+
+        $this->withSession($foreignLecturer)
+            ->getJson(route('lecturer.courses.weeks.index', ['course' => $this->courseId]))
+            ->assertForbidden();
+
+        $this->withSession($foreignLecturer)
+            ->postJson(route('lecturer.courses.weeks.store', ['course' => $this->courseId]), ['title' => 'X'])
+            ->assertForbidden();
+
+        $this->withSession($foreignLecturer)
+            ->postJson(route('lecturer.courses.weeks.reorder', ['course' => $this->courseId]), [
+                'order' => [['id' => (string) \Illuminate\Support\Str::uuid(), 'sort_order' => 0]],
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('course_weeks', ['course_id' => $this->courseId, 'title' => 'X']);
+    }
+
+    public function test_unknown_course_is_rejected(): void
+    {
+        $this->lecturerSession()
+            ->getJson(route('lecturer.courses.weeks.index', ['course' => '99999999-9999-4999-8999-999999999999']))
+            ->assertNotFound();
     }
 
     public function test_lecturer_can_reorder_weeks_and_renumber_indices(): void

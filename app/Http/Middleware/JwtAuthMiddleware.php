@@ -87,6 +87,13 @@ class JwtAuthMiddleware
                 ]);
 
             if ($response->successful()) {
+                // H6: refresh token dirotasi core-api — simpan token BARU di
+                // session, kalau tidak refresh berikutnya dianggap reuse.
+                $newRefresh = $response->json('data.refreshToken');
+                if (is_string($newRefresh) && $newRefresh !== '') {
+                    session(['refresh_token' => $newRefresh]);
+                }
+
                 return $response->json('data.accessToken');
             }
 

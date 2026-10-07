@@ -48,7 +48,11 @@ class LecturerMaterialsController extends Controller
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'file' => 'required|file|max:51200', // 50MB max
+            // M6/F-10: explicit extension allowlist (mirrors the upload
+            // input in UnifiedMaterialsTab). `mimes` guesses the type from
+            // the file CONTENT, so an HTML payload is rejected regardless of
+            // the Content-Type header the client sends.
+            'file' => 'required|file|max:51200|mimes:pdf,docx,pptx,txt,md,csv,png,jpg,jpeg,gif,webp,zip', // 50MB max
             'extract_images' => 'sometimes|boolean',
             'perform_ocr' => 'sometimes|boolean',
         ]);

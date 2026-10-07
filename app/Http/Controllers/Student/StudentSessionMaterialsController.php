@@ -141,10 +141,28 @@ class StudentSessionMaterialsController extends Controller
             }
         }
 
+        // M6/F-10: serve with nosniff and only render genuinely safe types
+        // inline. Anything else (HTML and friends) downloads as an attachment
+        // so a crafted upload can never execute in the kolabri.web.id origin.
+        $mimeType = $material->file_type ?: 'application/octet-stream';
+        $inlineSafe = in_array(strtolower($mimeType), [
+            'application/pdf',
+            'text/plain',
+            'text/csv',
+            'image/png',
+            'image/jpeg',
+            'image/gif',
+            'image/webp',
+        ], true);
+
         return Storage::disk($disk)->response(
             $material->file_path,
             $material->file_name,
-            ['Content-Type' => $material->file_type ?? 'application/octet-stream']
+            [
+                'Content-Type' => $mimeType,
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            $inlineSafe ? 'inline' : 'attachment'
         );
     }
 

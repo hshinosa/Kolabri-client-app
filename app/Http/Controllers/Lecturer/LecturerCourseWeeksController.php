@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Lecturer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\CourseMaterial;
 use App\Models\CourseWeek;
 use App\Models\CourseWeekMaterial;
@@ -20,8 +21,34 @@ class LecturerCourseWeeksController extends Controller
     public function __construct(
         private readonly CoreApiInternalClient $coreApiInternal
     ) {}
-    public function index(string $course): JsonResponse
+    /**
+     * M7 (F-09): weeks is a write surface for the course syllabus — every
+     * method must verify the acting lecturer owns the course. Admin passes.
+     */
+    private function assertCourseOwnership(Request $request, string $course): void
     {
+        $user = $request->input('auth_user') ?? session('user');
+        $userId = is_array($user) ? ($user['id'] ?? null) : null;
+        $role = is_array($user) ? ($user['role'] ?? null) : null;
+
+        $courseModel = Course::where('id', $course)->first();
+        if (! $courseModel) {
+            abort(404, 'Course not found');
+        }
+
+        if ($role === 'admin') {
+            return;
+        }
+
+        if (! $userId || $courseModel->lecturer_id !== $userId) {
+            abort(403, 'Forbidden');
+        }
+    }
+
+    public function index(Request $request, string $course): JsonResponse
+    {
+        $this->assertCourseOwnership($request, $course);
+
         $weeks = CourseWeek::where('course_id', $course)
             ->orderBy('sort_order')
             ->orderBy('week_index')
@@ -49,6 +76,8 @@ class LecturerCourseWeeksController extends Controller
 
     public function store(Request $request, string $course): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'sort_order' => 'nullable|integer|min:0',
@@ -72,6 +101,8 @@ class LecturerCourseWeeksController extends Controller
 
     public function update(Request $request, string $course, string $weekId): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         $week = CourseWeek::where('course_id', $course)->findOrFail($weekId);
 
         $validated = $request->validate([
@@ -88,8 +119,10 @@ class LecturerCourseWeeksController extends Controller
         return response()->json(['data' => $week->fresh()]);
     }
 
-    public function destroy(string $course, string $weekId): JsonResponse
+    public function destroy(Request $request, string $course, string $weekId): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         $week = CourseWeek::where('course_id', $course)->findOrFail($weekId);
         $week->delete();
         CourseWeekIndexService::renumberForCourse($course);
@@ -99,6 +132,8 @@ class LecturerCourseWeeksController extends Controller
 
     public function reorderWeeks(Request $request, string $course): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         $validated = $request->validate([
             'order' => 'required|array|min:1',
             'order.*.id' => 'required|string',
@@ -118,6 +153,8 @@ class LecturerCourseWeeksController extends Controller
 
     public function assignMaterial(Request $request, string $course, string $weekId): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         $week = CourseWeek::where('course_id', $course)->findOrFail($weekId);
 
         $validated = $request->validate([
@@ -163,8 +200,10 @@ class LecturerCourseWeeksController extends Controller
         return response()->json(['data' => $link->load('material')], 201);
     }
 
-    public function unassignMaterial(string $course, string $weekId, string $materialId): JsonResponse
+    public function unassignMaterial(Request $request, string $course, string $weekId, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         CourseWeek::where('course_id', $course)->findOrFail($weekId);
         CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
@@ -179,6 +218,8 @@ class LecturerCourseWeeksController extends Controller
 
     public function reorderWeekMaterials(Request $request, string $course, string $weekId): JsonResponse
     {
+        $this->assertCourseOwnership($request, $course);
+
         CourseWeek::where('course_id', $course)->findOrFail($weekId);
 
         $validated = $request->validate([

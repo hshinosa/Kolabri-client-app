@@ -41,6 +41,9 @@ class AuthController extends Controller
             if ($response->successful()) {
                 $data = $response->json('data');
 
+                // M1 (session fixation): rotate session ID BEFORE storing auth state
+                session()->regenerate(true);
+
                 session([
                     'jwt' => $data['accessToken'],
                     'refresh_token' => $data['refreshToken'],
@@ -141,6 +144,8 @@ class AuthController extends Controller
                         ->with('email', $validated['email'])
                         ->with('success', 'Akun berhasil dibuat! Silakan cek email Anda untuk verifikasi.');
                 }
+
+                session()->regenerate(true);
 
                 session([
                     'jwt' => $data['accessToken'],
@@ -279,8 +284,14 @@ class AuthController extends Controller
 
             if ($response->successful()) {
                 $newAccessToken = $response->json('data.accessToken');
-
-                session(['jwt' => $newAccessToken]);
+                $newRefreshToken = $response->json('data.refreshToken');
+                $sessionData = ['jwt' => $newAccessToken];
+                // H6: refresh token dirotasi core-api — wajib simpan yang baru,
+                // kalau tidak request refresh berikutnya kena deteksi reuse.
+                if (is_string($newRefreshToken) && $newRefreshToken !== '') {
+                    $sessionData['refresh_token'] = $newRefreshToken;
+                }
+                session($sessionData);
 
                 return response()->json([
                     'data' => [

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\ChatMessageAudit;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +31,14 @@ class MessageController extends Controller
         $oldContent = $validated['old_content'];
         $clientVersion = $validated['version'] ?? 0;
 
+        // M9: bind the message to the conversation the client claims before
+        // touching the audit trail (previously any member could edit/delete a
+        // message that lives in a different conversation).
+        $original = $this->fetchOriginalMessage($messageId, $conversationId);
+        if ($original instanceof JsonResponse) {
+            return $original;
+        }
+
         $lastAction = ChatMessageAudit::forMessage($messageId)
             ->where('conversation_id', $conversationId)
             ->orderByDesc('created_at')
@@ -41,7 +51,13 @@ class MessageController extends Controller
             ], 422);
         }
 
-        if ($lastAction && $lastAction->user_id !== $userId) {
+        // M9: ownership is always enforced — when no audit row exists yet the
+        // owner is the original sender from the chat itself.
+        $ownerId = $lastAction
+            ? (string) $lastAction->user_id
+            : (string) ($original['sender_id'] ?? '');
+
+        if ($ownerId !== $userId) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda hanya bisa mengedit pesan sendiri',
@@ -112,6 +128,13 @@ class MessageController extends Controller
         $conversationId = $validated['conversation_id'];
         $content = $validated['content'];
 
+        // M9: same binding check as edit() — message must belong to this
+        // conversation and must be resolvable upstream.
+        $original = $this->fetchOriginalMessage($messageId, $conversationId);
+        if ($original instanceof JsonResponse) {
+            return $original;
+        }
+
         $lastAction = ChatMessageAudit::forMessage($messageId)
             ->where('conversation_id', $conversationId)
             ->orderByDesc('created_at')
@@ -124,7 +147,12 @@ class MessageController extends Controller
             ], 422);
         }
 
-        $isOwner = !$lastAction || $lastAction->user_id === $userId;
+        // M9: owner = last known actor, or the original sender when the
+        // message has never been edited.
+        $ownerId = $lastAction
+            ? (string) $lastAction->user_id
+            : (string) ($original['sender_id'] ?? '');
+        $isOwner = $ownerId === $userId;
         $isModerator = in_array((string) ($authUser['role'] ?? ''), ['moderator', 'admin', 'teacher'], true);
 
         if (!$isOwner && !$isModerator) {
@@ -166,6 +194,13 @@ class MessageController extends Controller
             'conversation_id' => 'required|string',
         ]);
 
+        // M9: audit history is only exposed for a message that really belongs
+        // to the conversation the caller claims to be in.
+        $original = $this->fetchOriginalMessage($messageId, (string) $validated['conversation_id']);
+        if ($original instanceof JsonResponse) {
+            return $original;
+        }
+
         $audits = ChatMessageAudit::forMessage($messageId)
             ->where('conversation_id', $validated['conversation_id'])
             ->orderByDesc('created_at')
@@ -178,10 +213,53 @@ class MessageController extends Controller
     }
 
     /**
+     * M9: fetch the original message from core-api and verify it belongs to the
+     * conversation the client claims. Returns the message payload on success,
+     * or an already-built JsonResponse (401/404/503) when the check fails.
+     *
+     * core-api resolves group membership from the message's REAL conversation,
+     * so a message outside the caller's group is rejected upstream as well.
+     */
+    private function fetchOriginalMessage(string $messageId, string $conversationId): array|JsonResponse
+    {
+        try {
+            $response = $this->apiRequest()
+                ->get($this->apiUrl() . '/api/chat/messages/' . rawurlencode($messageId));
+        } catch (ConnectionException|RequestException $e) {
+            Log::error('fetchOriginalMessage failed', [
+                'message_id' => $messageId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Unable to verify message ownership'], 503);
+        }
+
+        if ($response->status() === 401) {
+            session()->forget(['jwt', 'refresh_token', 'user']);
+
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $remote = $response->json('data');
+
+        // Unknown message, or a message in a conversation the caller is not a
+        // member of — answered identically on purpose (no existence oracle).
+        if (! $response->successful() || ! is_array($remote)) {
+            return response()->json(['message' => 'Pesan tidak ditemukan'], 404);
+        }
+
+        if (($remote['conversation_id'] ?? null) !== $conversationId) {
+            return response()->json(['message' => 'Pesan tidak ditemukan'], 404);
+        }
+
+        return $remote;
+    }
+
+    /**
      * The auth.jwt middleware exposes the authenticated session user as request
      * input 'auth_user'; it never populates Laravel's auth guard, so
      * $request->user() is null on these routes. Resolve the session user
-     * explicitly and reject with401 when it is missing.
+     * explicitly and reject with 401 when it is missing.
      */
     private function resolveAuthUser(Request $request): ?array
     {

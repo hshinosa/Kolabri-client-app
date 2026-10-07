@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GoogleAuthController extends Controller
 {
@@ -15,7 +16,8 @@ class GoogleAuthController extends Controller
         $clientId = config('services.google.client_id');
         $redirectUri = urlencode(route('auth.google.callback'));
         $scope = urlencode('openid email profile');
-        $state = csrf_token();
+        // M3: dedicated random nonce (single-use) instead of the session-long CSRF token
+        $state = Str::random(40);
 
         session(['google_oauth_state' => $state]);
 
@@ -45,6 +47,9 @@ class GoogleAuthController extends Controller
             ]);
         }
 
+        // M3: state is single-use — consume it right after it passes validation
+        session()->forget('google_oauth_state');
+
         try {
             $tokenResponse = $this->coreApiRequest()->post(
                 $this->apiUrl() . '/api/auth/google',
@@ -53,6 +58,9 @@ class GoogleAuthController extends Controller
 
             if ($tokenResponse->successful()) {
                 $data = $tokenResponse->json('data');
+
+                // M1 (session fixation): rotate session ID BEFORE storing auth state
+                session()->regenerate(true);
 
                 session([
                     'jwt' => $data['accessToken'],
