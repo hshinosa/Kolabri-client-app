@@ -33,13 +33,21 @@ interface ActivityItem {
     courseName?: string;
 }
 
+interface SrlData {
+    distribution: { forethought: number; performance: number; reflection: number };
+    total: number;
+    avgConfidence: number | null;
+    subPhases: Record<string, number>;
+}
+
 interface Props {
     enrolledCourses?: unknown[];
     stats?: StudentStats;
     recentActivity?: ActivityItem[];
+    srl?: SrlData | null;
 }
 
-export default function StudentDashboard({ stats, recentActivity = [] }: Props) {
+export default function StudentDashboard({ stats, recentActivity = [], srl = null }: Props) {
     const { auth } = usePage<SharedData>().props;
     const navItems = useStudentNav('courses');
 
@@ -82,6 +90,31 @@ export default function StudentDashboard({ stats, recentActivity = [] }: Props) 
         { label: 'Refleksi', value: displayStats.reflections, icon: Pencil, color: 'var(--color-brand-muted)' },
         { label: 'Pesan Obrolan', value: displayStats.chatMessages, icon: MessageSquare, color: 'var(--color-brand-primary)' },
     ];
+
+    // Fase SRL pribadi + saran belajar singkat
+    const srlRows = srl && srl.total > 0
+        ? [
+              { key: 'forethought', label: 'Perencanaan (Forethought)', count: srl.distribution.forethought, color: 'var(--color-brand-primary)' },
+              { key: 'performance', label: 'Pelaksanaan (Performance)', count: srl.distribution.performance, color: 'var(--color-brand-dark)' },
+              { key: 'reflection', label: 'Refleksi (Reflection)', count: srl.distribution.reflection, color: 'var(--color-brand-muted)' },
+          ].map((r) => ({ ...r, pct: Math.round((r.count / srl.total) * 100) }))
+        : [];
+
+    const srlAdvice = (() => {
+        if (!srl || srl.total === 0) return null;
+        const { forethought, performance, reflection } = srl.distribution;
+        const total = srl.total;
+        if (reflection / total < 0.15) {
+            return 'Refleksimu masih minim — sisihkan waktu mengevaluasi hasil belajar setiap selesai sesi diskusi.';
+        }
+        if (forethought / total < 0.15) {
+            return 'Perencanaanmu masih minim — tentukan tujuan dan strategi sebelum memulai diskusi.';
+        }
+        if (performance / total > 0.7) {
+            return 'Kamu aktif berdiskusi. Sekarang luangkan waktu merencanakan langkah berikutnya dan mengevaluasi hasilnya.';
+        }
+        return 'Pola belajarmu seimbang antara merencanakan, melaksanakan, dan merefleksikan. Pertahankan!';
+    })();
 
     const quickActions = [
         {
@@ -167,6 +200,48 @@ export default function StudentDashboard({ stats, recentActivity = [] }: Props) 
                             ))
                         )}
                     </div>
+
+                    {srlRows.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.35, duration: 0.5 }}
+                        >
+                            <LiquidGlassCard intensity="medium" className="p-6" lightMode={true}>
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h2 className="text-lg font-semibold font-sans text-brand-dark">
+                                        Fase Belajar Kamu
+                                    </h2>
+                                    <span className="text-xs text-brand-muted-dark">
+                                        dari {srl?.total} pesan diskusi
+                                    </span>
+                                </div>
+                                <div className="space-y-3">
+                                    {srlRows.map((row) => (
+                                        <div key={row.key}>
+                                            <div className="mb-1 flex items-center justify-between text-sm">
+                                                <span className="text-brand-dark">{row.label}</span>
+                                                <span className="font-medium text-brand-muted-dark">
+                                                    {row.count} · {row.pct}%
+                                                </span>
+                                            </div>
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                                <div
+                                                    className="h-2 rounded-full transition-all duration-500"
+                                                    style={{ width: `${row.pct}%`, backgroundColor: row.color }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {srlAdvice && (
+                                    <div className="mt-4 rounded-lg bg-brand-primary/5 border border-brand-primary/10 px-4 py-3 text-sm text-brand-dark">
+                                        💡 {srlAdvice}
+                                    </div>
+                                )}
+                            </LiquidGlassCard>
+                        </motion.div>
+                    )}
 
                     <div className="grid gap-6 lg:grid-cols-3">
                         <motion.div

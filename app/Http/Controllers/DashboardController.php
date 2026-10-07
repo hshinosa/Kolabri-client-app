@@ -153,10 +153,22 @@ class DashboardController extends Controller
             // Activity endpoint may not exist yet, continue without it
         }
 
+        // SRL Zimmerman pribadi (classifier AI engine)
+        $srl = null;
+        try {
+            $response = $this->apiRequest()->get($this->apiUrl() . '/api/student/srl');
+            if ($response->successful()) {
+                $srl = $response->json('data');
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Student SRL fetch failed', ['error' => $e->getMessage()]);
+        }
+
         return Inertia::render('student/dashboard', [
             'enrolledCourses' => $courses,
             'stats' => $stats,
             'recentActivity' => $recentActivity,
+            'srl' => $srl,
         ]);
     }
 
