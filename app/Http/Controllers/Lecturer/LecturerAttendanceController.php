@@ -92,10 +92,11 @@ class LecturerAttendanceController extends Controller
             }
         }
 
-        // Query core-api for open session discussions (closedAt = null)
-        $runningResponse = $this->apiRequest()->get($this->apiUrl() . "/api/courses/{$course}/session-discussions", [
-            'status' => 'active',
-        ]);
+        // P2-03 (pass2): route lama (/session-discussions?status=active) tidak
+        // ada di core-api (404 ditelan → panel selalu kosong). Route yang ada:
+        // GET /api/courses/:id/sessions (requireLecturer, ownership dicek di
+        // core-api) — lalu filter closedAt=null di sini.
+        $runningResponse = $this->apiRequest()->get($this->apiUrl() . "/api/courses/{$course}/sessions");
 
         $running = [];
         if ($runningResponse->successful()) {
@@ -104,7 +105,7 @@ class LecturerAttendanceController extends Controller
                 if (!$disc['closedAt']) {
                     $running[] = [
                         'session_discussion_id' => $disc['id'],
-                        'title' => $disc['title'] ?? 'Diskusi',
+                        'title' => $disc['name'] ?? $disc['title'] ?? 'Diskusi',
                         'group_id' => $disc['groupId'] ?? null,
                         'week_id' => $disc['weekId'] ?? null,
                         'status' => 'running',

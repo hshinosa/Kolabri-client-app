@@ -160,6 +160,18 @@ class AnalyticsController extends Controller
             );
 
             if (!$response->successful()) {
+                // P2-09 (pass2): 403/404 harus diteruskan sbg JSON dgn status
+                // aslinya — dulu jadi 302 back() tanpa pesan yang menyesatkan
+                // konsumen fetch/download.
+                $status = $response->status();
+                if (in_array($status, [401, 403, 404], true)) {
+                    return response()->json([
+                        'message' => $response->json('message')
+                            ?? $response->json('error.message')
+                            ?? 'Failed to export analytics data',
+                        'code' => $response->json('error.code') ?? 'EXPORT_FAILED',
+                    ], $status);
+                }
                 return back()->withErrors(['export' => 'Failed to export analytics data']);
             }
 
@@ -280,7 +292,14 @@ class AnalyticsController extends Controller
                 return response()->json($response->json('data'));
             }
 
-            return response()->json(['error' => 'Failed to fetch live stats'], 500);
+            // P2-08 (pass2): non-2xx dulu dipetakan semua ke 500 — 403 utk
+            // kursus non-pemilik seharusnya tetap 403.
+            $status = $response->status();
+            return response()->json([
+                'error' => $response->json('message')
+                    ?? $response->json('error.message')
+                    ?? 'Failed to fetch live stats',
+            ], in_array($status, [401, 403, 404, 429], true) ? $status : 500);
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('Failed to fetch group quality metrics', ['error' => $e->getMessage()]);
             return response()->json([

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Lecturer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\CourseMaterial;
 use App\Models\MaterialView;
 use App\Services\CoreApiFilePath;
@@ -19,6 +20,32 @@ class LecturerMaterialsController extends Controller
         private readonly CoreApiInternalClient $coreApiInternal
     ) {}
 
+    /**
+     * P2-01 (pass2 HIGH): materials adalah permukaan tulis/baca kursus —
+     * setiap method wajib verifikasi pemilik kursus. Admin lolos.
+     * (Pola identik dgn LecturerCourseWeeksController::assertCourseOwnership.)
+     */
+    private function assertCourseOwnership(string $course): void
+    {
+        $request = request();
+        $user = $request->input('auth_user') ?? session('user');
+        $userId = is_array($user) ? ($user['id'] ?? null) : null;
+        $role = is_array($user) ? ($user['role'] ?? null) : null;
+
+        $courseModel = Course::where('id', $course)->first();
+        if (! $courseModel) {
+            abort(404, 'Course not found');
+        }
+
+        if ($role === 'admin') {
+            return;
+        }
+
+        if (! $userId || $courseModel->lecturer_id !== $userId) {
+            abort(403, 'Forbidden');
+        }
+    }
+
     private function resolveCoreApiFilePath(string $relativePath, string $disk): string
     {
         return CoreApiFilePath::resolve($relativePath, $disk);
@@ -33,6 +60,8 @@ class LecturerMaterialsController extends Controller
      */
     public function index(string $course): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $materials = CourseMaterial::where('course_id', $course)
             ->orderByDesc('created_at')
             ->get();
@@ -45,6 +74,8 @@ class LecturerMaterialsController extends Controller
      */
     public function store(Request $request, string $course): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -117,6 +148,8 @@ class LecturerMaterialsController extends Controller
      */
     public function update(Request $request, string $course, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         $validated = $request->validate([
@@ -135,6 +168,8 @@ class LecturerMaterialsController extends Controller
      */
     public function destroy(string $course, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         // Delete file from storage
@@ -156,6 +191,8 @@ class LecturerMaterialsController extends Controller
      */
     public function recordView(Request $request, string $course, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         $studentId = session('user.id');
@@ -189,6 +226,8 @@ class LecturerMaterialsController extends Controller
      */
     public function viewStats(string $course, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         $totalViews = $material->view_count;
@@ -213,6 +252,8 @@ class LecturerMaterialsController extends Controller
      */
     public function reindex(string $course, string $materialId): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $material = CourseMaterial::where('course_id', $course)->findOrFail($materialId);
 
         // Check both 'private' (new) and 'public' (legacy) disks

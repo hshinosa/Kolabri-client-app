@@ -124,10 +124,16 @@ class AISettingsController extends Controller
         }
     }
 
-    public function test(string $id)
+    public function test(Request $request, string $id)
     {
         try {
-            $response = $this->apiRequest()->post($this->apiUrl() . "/api/admin/ai-providers/{$id}/test");
+            // P2-05 (pass2): body request (testPrompt) harus diteruskan —
+            // dulu body [] → zod core-api menolak "Expected object, received
+            // array" sehingga uji koneksi SELALU gagal400 dari UI.
+            $response = $this->apiRequest()->post(
+                $this->apiUrl() . "/api/admin/ai-providers/{$id}/test",
+                $request->all(),
+            );
 
             return response()->json($response->json(), $response->status());
         } catch (\Illuminate\Http\Client\ConnectionException $e) {

@@ -199,11 +199,19 @@ class MasterDataController extends Controller
             }
 
             $file = $request->file('file');
+
+            // P2-07 (pass2): file 0-byte dulu memicu exception saat attach
+            // (atau 500 generik) — core-api menolak dgn 400 "CSV file is
+            // empty", jadi tangani di sini dengan status & pesan yang sama.
+            if ($file->getSize() === 0) {
+                return response()->json(['message' => 'CSV file is empty', 'code' => 'VALIDATION_ERROR'], 400);
+            }
+
             $response = $this->apiRequest()
                 ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
                 ->post($this->apiUrl() . '/api/admin/courses/bulk-import');
 
-            return response()->json($response->json(), $response->status());
+            return response()->json($response->json() ?? ['message' => 'Import failed'], $response->status());
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('MasterDataController: connection failed bulk importing courses', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Service unavailable', 'code' => 'SERVICE_TIMEOUT'], 503);

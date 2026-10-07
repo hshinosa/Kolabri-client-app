@@ -15,11 +15,36 @@ class LecturerMaterialsHubController extends Controller
     public function __construct(
         private readonly CoreApiInternalClient $coreApiInternal
     ) {}
+
+    /**
+     * P2-01 (pass2): hub menampilkan seluruh materi+kursus — wajib punya
+     * kursus sendiri (admin lolos). Pola sama dgn weeks/materials.
+     */
+    private function assertCourseOwnership(string $course): void
+    {
+        $user = request()->input('auth_user') ?? session('user');
+        $userId = is_array($user) ? ($user['id'] ?? null) : null;
+        $role = is_array($user) ? ($user['role'] ?? null) : null;
+
+        $courseModel = \App\Models\Course::where('id', $course)->first();
+        if (! $courseModel) {
+            abort(404, 'Course not found');
+        }
+        if ($role === 'admin') {
+            return;
+        }
+        if (! $userId || $courseModel->lecturer_id !== $userId) {
+            abort(403, 'Forbidden');
+        }
+    }
+
     /**
      * Unified lecturer materials hub (G1): all course materials, weeks, pool without module filter.
      */
     public function show(string $course): JsonResponse
     {
+        $this->assertCourseOwnership($course);
+
         $weeks = CourseWeek::where('course_id', $course)
             ->orderBy('sort_order')
             ->orderBy('week_index')

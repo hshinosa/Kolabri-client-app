@@ -22,6 +22,19 @@ class LecturerAktivitasController extends Controller
             $studentsResponse = $this->apiRequest()->get(
                 $this->apiUrl() . "/api/courses/{$course}/students"
             );
+
+            // P2-09 (pass2): 403/404 core-api (kursus bukan milik dosen ini)
+            // dulu ditelan → 200 {data:[]} seolah-olah kursus kosong.
+            $deny = fn ($r) => in_array($r->status(), [401, 403, 404], true)
+                ? response()->json([
+                    'message' => $r->json('message') ?? $r->json('error.message') ?? 'Forbidden',
+                    'code' => $r->json('error.code') ?? 'FORBIDDEN',
+                ], $r->status())
+                : null;
+
+            if ($denied = $deny($studentsResponse)) {
+                return $denied;
+            }
             $students = $studentsResponse->successful() ? $studentsResponse->json('data', []) : [];
 
             // Fetch messages/activity for the course
@@ -29,6 +42,9 @@ class LecturerAktivitasController extends Controller
                 $this->apiUrl() . "/api/courses/{$course}/messages",
                 ['limit' => 10000]
             );
+            if ($denied = $deny($messagesResponse)) {
+                return $denied;
+            }
             $messages = $messagesResponse->successful() ? $messagesResponse->json('data', []) : [];
 
             // Aggregate activity per student
@@ -140,10 +156,15 @@ class LecturerAktivitasController extends Controller
     /**
      * Export diskusi activity to CSV.
      */
-    public function export(string $course): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function export(string $course): \Symfony\Component\HttpFoundation\Response
     {
         try {
             $response = $this->index($course);
+            // P2-09: kalau index menolak (403/404), export ikut menolak —
+            // dulu tetap download CSV hanya berisi header.
+            if ($response->getStatusCode() >= 400) {
+                return $response;
+            }
             $data = json_decode($response->getContent(), true)['data'] ?? [];
         } catch (ConnectionException $e) {
             $data = [];

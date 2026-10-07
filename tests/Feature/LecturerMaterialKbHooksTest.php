@@ -25,6 +25,22 @@ class LecturerMaterialKbHooksTest extends TestCase
             'services.api.base_url' => 'http://localhost:3000',
             'services.api.internal_secret' => 'test-internal-secret',
         ]);
+        // P2-01 guard (assertCourseOwnership) query tabel courses — sediakan
+        // schema + row pemilik agar alur uji tetap utuh.
+        Schema::dropIfExists('courses');
+        Schema::create('courses', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->uuid('owner_id')->nullable(); // courses memakai owner_id (accessor lecturer_id)
+            $table->string('name')->nullable();
+            $table->string('description')->nullable();
+            $table->timestamps();
+        });
+        \Illuminate\Support\Facades\DB::table('courses')->insert([
+            'id' => $this->courseId,
+            'owner_id' => 'lec-1',
+            'name' => 'Kursus Uji',
+        ]);
+
     }
 
     private function createSchema(): void

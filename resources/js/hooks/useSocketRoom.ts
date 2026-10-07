@@ -228,10 +228,32 @@ export function useSocketRoom({
             setConnectionStatus('disconnected');
         });
 
+        // F9 pass2: server_error level DATA (PRE_READ/GOAL/Access denied/
+        // load_more, dll) TIDAK berarti koneksi putus — kalau dipaksa
+        // setIsConnected(false), pengguna melihat "terputus" padahal socket
+        // hidup. Yang memutus koneksi hanya event `disconnect` (di atas).
         socketRef.current.on('server_error', (data: { message: string }) => {
             setConnectionError(data.message);
-            setIsConnected(false);
         });
+
+        // F9 pass2: server juga mengirim event `error` (mis. "You must be in
+        // the room…") dan `validation_error` — tanpa listener ini pesan
+        // tampil SENYAP (0 match listener di seluruh resources/js).
+        socketRef.current.on('error', (data: { message?: string }) => {
+            if (data?.message) setConnectionError(data.message);
+        });
+        socketRef.current.on(
+            'validation_error',
+            (data: { event?: string; details?: unknown }) => {
+                const first = Array.isArray(data?.details)
+                    ? String((data.details[0] as { message?: string })?.message ?? '')
+                    : '';
+                setConnectionError(
+                    (first ? first : 'Data tidak valid') +
+                        (data?.event ? ` (${data.event})` : ''),
+                );
+            },
+        );
 
         // Rate limit server (mis. >10 pesan/10 detik): tanpa handler ini pesan
         // yang dibatasi hilang senyap tanpa kabar ke pengguna (bug E2E 2026-10-06).

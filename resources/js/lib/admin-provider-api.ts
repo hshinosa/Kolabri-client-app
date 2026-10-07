@@ -1,10 +1,9 @@
 import axios from 'axios';
-import type { TestProviderRequest, TestProviderResponse, ModelListResponse } from '@/types/admin-provider';
+import type { ModelListResponse } from '@/types/admin-provider';
 
-export async function testProviderConnection(request: TestProviderRequest): Promise<TestProviderResponse> {
-    const response = await axios.post<{ data: TestProviderResponse }>('/admin/ai-providers/test', request);
-    return response.data.data;
-}
+// P2-05 (pass2): testProviderConnection() lama memanggil /admin/ai-providers/test
+// yang tidak pernah ada di routes/web.php (404) dan tak pernah dipakai —
+// uji koneksi yang sebenarnya ada di AI Settings → POST /admin/ai-settings/{id}/test.
 
 export async function getProviderModels(
     provider: string,
