@@ -35,21 +35,37 @@ class AppServiceProvider extends ServiceProvider
                 CURLOPT_TCP_KEEPINTVL => 60,
             ],
         ]);
-        RateLimiter::for('login', function (Request $request) {
+        // Matikan sementara (env RATE_LIMIT_DISABLED=1): semua limiter auth
+        // dilewati tanpa membatasi — selaras dengan core-api yang memakai env sama.
+        $rateLimitDisabled = filter_var(env('RATE_LIMIT_DISABLED', false), FILTER_VALIDATE_BOOLEAN);
+
+        RateLimiter::for('login', function (Request $request) use ($rateLimitDisabled) {
+            if ($rateLimitDisabled) {
+                return Limit::none();
+            }
+
             return [
                 Limit::perMinutes(5, 5)->by($request->ip()),
                 Limit::perHour(10)->by('login:' . $request->input('email')),
             ];
         });
 
-        RateLimiter::for('register', function (Request $request) {
+        RateLimiter::for('register', function (Request $request) use ($rateLimitDisabled) {
+            if ($rateLimitDisabled) {
+                return Limit::none();
+            }
+
             return [
                 Limit::perHour(5)->by($request->ip()),
                 Limit::perDay(3)->by('register:' . $request->input('email')),
             ];
         });
 
-        RateLimiter::for('forgot-password', function (Request $request) {
+        RateLimiter::for('forgot-password', function (Request $request) use ($rateLimitDisabled) {
+            if ($rateLimitDisabled) {
+                return Limit::none();
+            }
+
             return [
                 Limit::perHour(5)->by($request->ip()),
                 Limit::perHour(3)->by('forgot:' . $request->input('email')),
