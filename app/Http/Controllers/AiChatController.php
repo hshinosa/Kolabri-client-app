@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CourseWeek;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Request;
@@ -60,9 +61,42 @@ class AiChatController extends Controller
             abort(404, 'Chat not found');
         }
 
+        // Opsi "Fokus materi" utk dropdown chat AI: minggu yang punya materi
+        // di kursus yang diikuti mahasiswa (query langsung tabel course_weeks).
+        $weekOptions = [];
+        try {
+            $enrolledResponse = $this->apiRequest()->get($this->apiUrl() . '/api/courses/enrolled');
+            $enrolled = $enrolledResponse->successful() ? $enrolledResponse->json('data', []) : [];
+            $courseNames = [];
+            foreach ($enrolled as $course) {
+                $courseNames[$course['id']] = $course['name'] ?? '';
+            }
+            if ($courseNames !== []) {
+                $weeks = CourseWeek::whereIn('course_id', array_keys($courseNames))
+                    ->withCount('weekMaterials')
+                    ->orderBy('course_id')
+                    ->orderBy('week_index')
+                    ->get();
+                foreach ($weeks as $week) {
+                    if (($week->week_materials_count ?? 0) === 0) {
+                        continue;
+                    }
+                    $weekOptions[] = [
+                        'course_id' => $week->course_id,
+                        'course_name' => $courseNames[$week->course_id] ?? '',
+                        'week_index' => (int) $week->week_index,
+                        'title' => $week->title,
+                    ];
+                }
+            }
+        } catch (ConnectionException | RequestException $e) {
+            Log::warning('AiChatController: week options gagal diambil', ['error' => $e->getMessage()]);
+        }
+
         return Inertia::render('student/ai-chat/index', [
             'chats' => $chats,
             'activeChat' => $activeChat,
+            'weekOptions' => $weekOptions,
         ]);
     }
 
@@ -208,13 +242,15 @@ class AiChatController extends Controller
         if (empty($content)) {
             return response()->json(['error' => 'Content is required'], 422);
         }
+        $weekIndex = $request->input('week_index');
+        $focusCourseId = $request->input('focus_course_id');
 
         $jwt = session('jwt');
         if (empty($jwt)) {
             return response()->json(['error' => 'Not authenticated'], 401);
         }
 
-        return response()->stream(function () use ($content, $chatId, $jwt) {
+        return response()->stream(function () use ($content, $chatId, $jwt, $weekIndex, $focusCourseId) {
             while (ob_get_level() > 0) {
                 ob_end_flush();
             }
@@ -224,7 +260,11 @@ class AiChatController extends Controller
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => json_encode(['content' => $content]),
+                CURLOPT_POSTFIELDS => json_encode(array_filter([
+                    'content' => $content,
+                    'week_index' => is_numeric($weekIndex) ? (int) $weekIndex : null,
+                    'focus_course_id' => $focusCourseId ?: null,
+                ], static fn ($v) => $v !== null)),
                 CURLOPT_HTTPHEADER => [
                     'Content-Type: application/json',
                     'Authorization: Bearer ' . $jwt,

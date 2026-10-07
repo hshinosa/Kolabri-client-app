@@ -133,6 +133,17 @@ export default function StudentReflectionsIndex({ reflections, courses }: Props)
         return () => clearTimeout(timer);
     }, []);
 
+    // Draft dari chat AI ("Jadikan dasar refleksi"): buka form dgn isi awal —
+    // mahasiswa edit dulu sebelum submit, refleksi tetap milik mereka.
+    useEffect(() => {
+        const draft = sessionStorage.getItem('kolabri_reflection_draft');
+        if (draft) {
+            sessionStorage.removeItem('kolabri_reflection_draft');
+            setData('content', draft);
+            setShowCreateModal(true);
+        }
+    }, []);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         course_id: '',
         content: '',

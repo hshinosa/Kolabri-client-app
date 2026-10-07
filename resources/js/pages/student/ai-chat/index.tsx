@@ -84,9 +84,10 @@ interface MessageItemProps {
     userInitial: string;
     formatTime: (dateString: string) => string;
     onOpenCitation: (cite: { source: string; page?: number; snippet?: string; course_id?: string; course_material_id?: string }) => void;
+    onSaveReflection?: (content: string) => void;
 }
 
-function MessageItemBase({ message, userInitial, formatTime, onOpenCitation }: MessageItemProps) {
+function MessageItemBase({ message, userInitial, formatTime, onOpenCitation, onSaveReflection }: MessageItemProps) {
     const isAssistant = message.role === 'assistant';
     const isUser = message.role === 'user';
     const [codeCopied, setCodeCopied] = useState<string | null>(null);
@@ -129,7 +130,20 @@ function MessageItemBase({ message, userInitial, formatTime, onOpenCitation }: M
                 )}
                 <div className="mt-1 flex items-center justify-between gap-2">
                     <p className={`text-xs ${isUser ? 'text-white/70' : 'text-brand-muted-dark'}`}>{formatTime(message.created_at)}</p>
-                    {isAssistant && <div className="opacity-0 transition-opacity group-hover:opacity-100"><CopyButton text={message.content} /></div>}
+                    {isAssistant && (
+                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                                type="button"
+                                onClick={() => onSaveReflection?.(message.content)}
+                                aria-label="Jadikan dasar refleksi"
+                                title="Jadikan dasar refleksi"
+                                className="inline-flex items-center gap-1 rounded-lg p-1 text-brand-muted-dark transition-colors hover:bg-white/80 hover:text-brand-primary"
+                            >
+                                <FileText className="h-3.5 w-3.5" />
+                            </button>
+                            <CopyButton text={message.content} />
+                        </div>
+                    )}
                 </div>
                 {isAssistant && message.citations && message.citations.length > 0 && <CitationList citations={message.citations} onOpenCitation={onOpenCitation} />}
             </div>
@@ -165,9 +179,17 @@ interface AiChat {
     messages?: AiMessage[];
 }
 
+interface WeekOption {
+    course_id: string;
+    course_name: string;
+    week_index: number;
+    title: string;
+}
+
 interface Props {
     chats: AiChat[];
     activeChat: AiChat | null;
+    weekOptions?: WeekOption[];
 }
 
 const headingStyle = {
@@ -198,7 +220,7 @@ const emptyStateCards = [
 ] as const;
 
 
-export default function AiChatIndex({ chats, activeChat }: Props) {
+export default function AiChatIndex({ chats, activeChat, weekOptions = [] }: Props) {
     const { auth: authData } = usePage<SharedData>().props;
     const pageProps = usePage<SharedData>().props as SharedData & {
         errors?: Record<string, string>;
@@ -222,6 +244,17 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
     const streamingContentRef = useRef('');
     const [showScrollBtn, setShowScrollBtn] = useState(false);
     const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
+    // Fokus materi per-minggu: "all" atau `${course_id}:${week_index}`
+    const [focusKey, setFocusKey] = useState<string>('all');
+    const focusWeek = useMemo(
+        () => weekOptions.find((w) => `${w.course_id}:${w.week_index}` === focusKey) ?? null,
+        [weekOptions, focusKey],
+    );
+    // Simpan jawaban AI sebagai draft refleksi (di-edit dulu mahasiswa sebelum submit)
+    const handleSaveReflection = useCallback((content: string) => {
+        sessionStorage.setItem('kolabri_reflection_draft', content);
+        router.visit(student.reflections.index.url());
+    }, []);
     const [documentViewer, setDocumentViewer] = useState<DocumentViewerTarget | null>(null);
 
     useEffect(() => {
@@ -415,7 +448,10 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                 method: 'POST',
                 credentials: 'include',
                 headers: { ...apiHeaders, 'Accept': 'text/event-stream' },
-                body: JSON.stringify({ content }),
+                body: JSON.stringify({
+                    content,
+                    ...(focusWeek ? { week_index: focusWeek.week_index, focus_course_id: focusWeek.course_id } : {}),
+                }),
                 signal: controller.signal,
             });
 
@@ -497,7 +533,10 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                 method: 'POST',
                 credentials: 'include',
                 headers: { ...apiHeaders, 'Accept': 'text/event-stream' },
-                body: JSON.stringify({ content }),
+                body: JSON.stringify({
+                    content,
+                    ...(focusWeek ? { week_index: focusWeek.week_index, focus_course_id: focusWeek.course_id } : {}),
+                }),
                 signal: controller.signal,
             });
 
@@ -753,6 +792,7 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                     userInitial={authData.user?.name?.charAt(0).toUpperCase() || 'U'}
                                                     formatTime={formatTime}
                                                     onOpenCitation={handleOpenCitation}
+                                                    onSaveReflection={handleSaveReflection}
                                                 />
                                             </div>
                                         );
@@ -917,6 +957,25 @@ export default function AiChatIndex({ chats, activeChat }: Props) {
                                                 {item.eyebrow}
                                             </button>
                                         ))}
+                                    </div>
+                                )}
+                                {weekOptions.length > 0 && (
+                                    <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
+                                        <span className="text-brand-muted-dark">Fokus materi:</span>
+                                        <select
+                                            value={focusKey}
+                                            onChange={(e) => setFocusKey(e.target.value)}
+                                            aria-label="Fokus materi chat AI"
+                                            className="rounded-lg border bg-white px-2 py-1 text-xs text-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                                            style={{ borderColor: 'rgba(226,232,240,0.9)' }}
+                                        >
+                                            <option value="all">Semua materi</option>
+                                            {weekOptions.map((w) => (
+                                                <option key={`${w.course_id}:${w.week_index}`} value={`${w.course_id}:${w.week_index}`}>
+                                                    {w.course_name} · Minggu {w.week_index}: {w.title}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 )}
                                 <div className="rounded-[24px] border bg-white/92 px-3 py-2.5 shadow-[0_14px_32px_rgba(148,163,184,0.10)]" style={{ borderColor: 'rgba(226,232,240,0.9)' }}>
