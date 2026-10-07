@@ -119,7 +119,8 @@ class AuthController extends Controller
             'name' => 'required|min:2|max:255',
             'email' => 'required|email|max:255',
             'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:admin,lecturer,student',
+            // Admin tidak boleh dari registrasi publik (blok eskalasi privilese)
+            'role' => 'required|in:lecturer,student',
             'terms' => 'accepted',
         ]);
 
