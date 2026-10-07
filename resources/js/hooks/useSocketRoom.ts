@@ -233,6 +233,18 @@ export function useSocketRoom({
             setIsConnected(false);
         });
 
+        // Rate limit server (mis. >10 pesan/10 detik): tanpa handler ini pesan
+        // yang dibatasi hilang senyap tanpa kabar ke pengguna (bug E2E 2026-10-06).
+        socketRef.current.on(
+            'rate_limit_exceeded',
+            (data: { message?: string; retryAfter?: number }) => {
+                const wait = data.retryAfter
+                    ? ` Coba lagi dalam ${Math.ceil(data.retryAfter / 1000)} detik.`
+                    : '';
+                setConnectionError((data.message || 'Terlalu banyak permintaan.') + wait);
+            },
+        );
+
         socketRef.current.on('intervention_error', (data: { message?: string }) => {
             setConnectionError(data.message || 'AI intervention unavailable right now.');
         });
