@@ -66,9 +66,9 @@ Route::get('/csrf-token', function () {
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('auth.login.index');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('auth.login.post');
+    Route::post('/login', [AuthController::class, 'login'])->name('auth.login.post'); // throttle:login dihapus sementara
     Route::get('/register', [AuthController::class, 'showRegister'])->name('auth.register.index');
-    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register')->name('auth.register.post');
+    Route::post('/register', [AuthController::class, 'register'])->name('auth.register.post'); // throttle:register dihapus sementara
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotPassword'])->name('auth.forgot-password.index');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->middleware('throttle:forgot-password')->name('auth.forgot-password.post');
     Route::get('/reset-password', [ForgotPasswordController::class, 'showResetPassword'])->name('auth.reset-password.index');
