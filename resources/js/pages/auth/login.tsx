@@ -55,6 +55,14 @@ export default function Login() {
         }
         post('/login', {
             preserveScroll: true,
+            onSuccess: () => {
+                // Sesi di-regenerate saat login (AuthController) sehingga token
+                // CSRF di meta tag DOM masih milik sesi LAMA. Tanpa refresh ini,
+                // interaksi pertama setelah login (semua fetch yang membawa
+                // X-CSRF-TOKEN dari meta) kena 419 Page Expired sampai halaman
+                // di-refresh manual. Ambil token baru utk sesi yang baru terbentuk.
+                void refreshCsrfToken();
+            },
             onError: (errs) => {
                 // Check for rate limiting (429)
                 if (errs && typeof errs === 'object') {

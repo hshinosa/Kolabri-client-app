@@ -29,7 +29,13 @@ export default function Register() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         await refreshCsrfToken();
-        post('/register');
+        post('/register', {
+            // Registrasi langsung masuk (session regenerate) — segarkan token
+            // CSRF meta seperti di login, cegah 419 pada interaksi pertama.
+            onSuccess: () => {
+                void refreshCsrfToken();
+            },
+        });
     };
 
     const inputStyles = {
