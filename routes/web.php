@@ -79,7 +79,7 @@ Route::middleware('guest')->group(function () {
 
 Route::get('/email/verify', [EmailVerificationController::class, 'showNotice'])->name('auth.verify-email.notice');
 Route::get('/email/verify/{token}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email.verify');
-Route::post('/email/verify/resend', [EmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('auth.verify-email.resend');
+Route::post('/email/verify/resend', [EmailVerificationController::class, 'resend'])->middleware('throttle:email-resend')->name('auth.verify-email.resend');
 
 /*
 |--------------------------------------------------------------------------
@@ -97,7 +97,7 @@ Route::middleware('auth.jwt')->group(function () {
     Route::post('/api/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('api.notifications.read-all');
     
     Route::post('/api/chat/upload', [ChatUploadController::class, 'store'])
-        ->middleware(['assert.chat.membership', 'throttle:30,5'])
+        ->middleware(['assert.chat.membership', 'throttle:chat-upload'])
         ->name('chat.upload');
 
     // Chat Message Edit/Delete
@@ -152,11 +152,11 @@ Route::middleware('auth.jwt')->group(function () {
 
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [UserManagementController::class, 'index'])->name('index');
-            Route::post('/bulk-delete', [UserManagementController::class, 'bulkDelete'])->name('bulk-delete');
-            Route::post('/bulk-role-change', [UserManagementController::class, 'bulkRoleChange'])->name('bulk-role-change');
-            Route::post('/bulk-import', [UserManagementController::class, 'bulkImport'])->name('bulk-import');
+            Route::post('/bulk-delete', [UserManagementController::class, 'bulkDelete'])->middleware('throttle:admin-bulk')->name('bulk-delete');
+            Route::post('/bulk-role-change', [UserManagementController::class, 'bulkRoleChange'])->middleware('throttle:admin-bulk')->name('bulk-role-change');
+            Route::post('/bulk-import', [UserManagementController::class, 'bulkImport'])->middleware('throttle:admin-bulk')->name('bulk-import');
             Route::get('/export', [UserManagementController::class, 'exportData'])
-                ->middleware('throttle:10,1')
+                ->middleware('throttle:admin-bulk')
                 ->name('export');
             Route::get('/{id}', [UserManagementController::class, 'show'])->name('show');
             Route::post('/', [UserManagementController::class, 'store'])->name('store');
@@ -170,7 +170,7 @@ Route::middleware('auth.jwt')->group(function () {
             Route::get('/', [MasterDataController::class, 'index'])->name('index');
             Route::get('/archived', [MasterDataController::class, 'index'])->name('archived');
             Route::get('/export', [MasterDataController::class, 'exportData'])
-                ->middleware('throttle:10,1')
+                ->middleware('throttle:admin-bulk')
                 ->name('export');
             Route::post('/bulk-activate', [MasterDataController::class, 'bulkActivate'])->name('bulk-activate');
             Route::post('/bulk-deactivate', [MasterDataController::class, 'bulkDeactivate'])->name('bulk-deactivate');
@@ -391,14 +391,14 @@ Route::middleware('auth.jwt')->group(function () {
 
         // BFF proxy routes for session-discussion close/reflection/summary
         Route::post('/courses/{course}/session-discussions/{sessionDiscussion}/close', [StudentCourseController::class, 'closeSession'])
-            ->middleware('throttle:10,5')
+            ->middleware('throttle:close-session')
             ->name('session-discussions.close');
         Route::post('/courses/{course}/session-discussions/{sessionDiscussion}/reflection', [StudentCourseController::class, 'submitReflection'])
-            ->middleware('throttle:10,5')
+            ->middleware('throttle:reflection')
             ->name('session-discussions.reflection');
         Route::get('/courses/{course}/session-discussions/{sessionDiscussion}/summary', [StudentCourseController::class, 'sessionDiscussionSummary'])->name('session-discussions.summary');
         Route::post('/courses/{course}/session-discussions/{sessionDiscussion}/regenerate-summary', [StudentCourseController::class, 'regenerateSummary'])
-            ->middleware('throttle:10,5')
+            ->middleware('throttle:regenerate-summary')
             ->name('session-discussions.regenerate-summary');
 
         // Reflections (submit + history only; templates/tags/analytics = Future Works / out of scope)
