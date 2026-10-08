@@ -1526,64 +1526,49 @@ export default function StudentChatRoom({ course, group, sessionDiscussion, sock
                 setAiSummaryLoading(true);
                 setShowAiSummaryModal(true);
 
-                const summaryMessages = messages.map((m) => ({
-                    content: m.content,
-                    senderName: m.sender_name || 'Unknown',
-                }));
-
-                const stats = {
-                    totalMessages: messages.length,
-                    participantCount: new Set(messages.map((m) => m.sender_id)).size,
-                };
-
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                };
-                if (jwtToken) {
-                    headers.Authorization = `Bearer ${jwtToken}`;
-                }
-
-                fetch('/api/discussion-direction/summary', {
-                    method: 'POST',
+                // Penilaian tujuan kini dihasilkan server saat sesi ditutup
+                // (endpoint direction/summary dosen-only sejak P2-04 agar kuota
+                // AI tak bisa dibakar client) — ambil hasilnya dari GET summary.
+                fetch(`/student/courses/${course.id}/session-discussions/${sessionDiscussion.id}/summary`, {
                     credentials: 'include',
-                    headers,
-                    body: JSON.stringify({
-                        messages: summaryMessages,
-                        goal: goal.content,
-                        stats,
-                    }),
+                    headers: { Accept: 'application/json' },
                 })
-                    .then(async (res) => {
-                        if (!res.ok) {
-                            const errBody = await res.json().catch(() => null);
-                            throw new Error(errBody?.message || `HTTP ${res.status}`);
-                        }
-                        return res.json();
-                    })
+                    .then((res) => (res.ok ? res.json() : null))
                     .then((data) => {
-                        if (data?.data) {
-                            setAiSummary(data.data);
+                        const a = data?.goalAssessment;
+                        if (a && typeof a === 'object') {
+                            setAiSummary({
+                                goalAchieved: !!a.goalAchieved,
+                                topics: Array.isArray(a.topics) ? a.topics : [],
+                                contributions:
+                                    a.contributions && typeof a.contributions === 'object'
+                                        ? a.contributions
+                                        : {},
+                                assessment:
+                                    typeof a.assessment === 'string' && a.assessment
+                                        ? a.assessment
+                                        : 'Penilaian tujuan belum tersedia untuk sesi ini.',
+                            });
                         } else {
                             setAiSummary({
                                 goalAchieved: false,
                                 topics: [],
                                 contributions: {},
                                 assessment:
-                                    'Penilaian tujuan tidak tersedia. Coba tutup ulang sesi atau hubungi dosen jika masalah berlanjut.',
+                                    'Penilaian tujuan belum tersedia. Ringkasan diskusi di atas tetap tersedia — hubungi dosen bila penilaian diperlukan.',
                             });
                         }
                     })
                     .catch((err) => {
-                        console.error('Failed to generate AI summary', err);
+                        console.error('Failed to load goal assessment', err);
                         setAiSummary({
                             goalAchieved: false,
                             topics: [],
                             contributions: {},
                             assessment:
-                                'Penilaian tujuan gagal dimuat (autentikasi/layanan AI). Ringkasan diskusi di atas tetap tersedia.',
+                                'Penilaian tujuan gagal dimuat. Ringkasan diskusi di atas tetap tersedia.',
                         });
-                        toast.error('Gagal membuat penilaian tujuan AI');
+                        toast.error('Gagal memuat penilaian tujuan AI');
                     })
                     .finally(() => {
                         setAiSummaryLoading(false);
